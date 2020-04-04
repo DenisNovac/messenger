@@ -1,16 +1,25 @@
 package app
 
-import org.log4s.getLogger
-import org.http4s.{Http, HttpRoutes, Request, Response}
-import org.http4s.server.Router
-import org.http4s.server.middleware.Logger
-import org.http4s.syntax.all._
-import org.http4s.dsl.io._
-import cats.syntax.functor._
-import cats.data.Kleisli
-import cats.effect.{ContextShift, ExitCode, IO, IOApp}
+import cats.effect.ExitCode
+import sttp.model.StatusCode
+import sttp.tapir._
+import sttp.tapir.server.ServerDefaults.StatusCodes
 
-import scala.concurrent.ExecutionContext.global
+/** Секция построения реализации */
+import scala.concurrent.ExecutionContext
+
+import cats.syntax.either._ // для asRight
+import cats.syntax.functor._ // для as
+import cats.syntax.semigroupk._  // для <+>
+import cats.effect.IO
+import cats.effect.ContextShift
+import cats.effect.Timer
+
+import sttp.tapir.server.http4s._
+import org.http4s.server.blaze.BlazeServerBuilder
+import org.http4s.syntax.all._ // для orNotFound
+import org.http4s.HttpRoutes
+import org.http4s.server.Router
 
 /** Модель данных */
 sealed trait Data
@@ -20,35 +29,41 @@ final case class Sync(timestamp: Int) extends Data
 
 object Routes {
 
-  val health: HttpRoutes[IO] = HttpRoutes.of[IO] {
-    case req @ GET -> Root / "health" =>
-      Ok()
-  }
+  val health: Endpoint[Unit, Unit, StatusCode, Nothing] =
+    endpoint.get
+      .in("health")
+      .out(statusCode)
+
+  // GET /hello?name=...
+  val hello: Endpoint[String, Unit, String, Nothing] =
+    endpoint.get
+      .in("hello")
+      .in(query[String]("name"))
+      .out(stringBody)
 
 }
 
-object Server extends IOApp {
-  private val globalLogger = getLogger("Master")
+object Server extends App {
 
-  implicit val cs: ContextShift[IO] = IO.contextShift(global)
+  implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
+  implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
+  implicit val timer: Timer[IO] = IO.timer(ec)
 
-  val host = "127.0.0.1"
-  val port = 8080
+  /** Преобразование роутов Tapir в Http4s */
+  val health: HttpRoutes[IO] = Routes.health.toRoutes(_ => IO(StatusCodes.success.asRight[Unit]))
+  val hello: HttpRoutes[IO] = Routes.hello.toRoutes(name => IO(s"Hello, $name".asRight[Unit]))
+  val concat = health <+> hello
 
-  import org.http4s.server.blaze.BlazeServerBuilder
+  val routes = Router("/" -> concat).orNotFound
 
-  val routes: Kleisli[IO, Request[IO], Response[IO]] = Router(
-    "/" -> Routes.health
-  ).orNotFound
+  val server: IO[ExitCode] = BlazeServerBuilder[IO]
+    .bindHttp(8080, "localhost")
+    .withHttpApp(routes)
+    .serve
+    .compile
+    .drain
+    .as(ExitCode.Success)
 
-  val loggedRoutes: Http[IO, IO] = Logger.httpApp(true, true)(routes)
+  server.unsafeRunSync()
 
-  override def run(args: List[String]): IO[ExitCode] =
-    BlazeServerBuilder[IO]
-      .bindHttp(port, host)
-      .withHttpApp(loggedRoutes)
-      .serve
-      .compile
-      .drain
-      .as(ExitCode.Success)
 }
