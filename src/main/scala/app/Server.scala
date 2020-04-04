@@ -1,23 +1,16 @@
 package app
 
-import akka.actor.ActorSystem
-import akka.event.Logging
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.StatusCodes
+import org.log4s.getLogger
+import org.http4s.{Http, HttpRoutes, Request, Response}
+import org.http4s.server.Router
+import org.http4s.server.middleware.Logger
+import org.http4s.syntax.all._
+import org.http4s.dsl.io._
+import cats.syntax.functor._
+import cats.data.Kleisli
+import cats.effect.{ContextShift, ExitCode, IO, IOApp}
 
-import scala.concurrent.ExecutionContextExecutor
-import scala.io.StdIn
-
-/** Для методов jsonFormat */
-import spray.json.DefaultJsonProtocol._
-import spray.json.RootJsonFormat
-
-/** Возможность вернуть из роута сообщение */
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-
-/** Для построения роутов - методы path, get, т.п. */
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.Route
+import scala.concurrent.ExecutionContext.global
 
 /** Модель данных */
 sealed trait Data
@@ -25,101 +18,37 @@ final case class Message(timestamp: Int, user: String, text: String)
     extends Data
 final case class Sync(timestamp: Int) extends Data
 
-object Server extends App {
+object Routes {
 
-  implicit val system: ActorSystem = ActorSystem()
-  implicit val ec: ExecutionContextExecutor = system.dispatcher
-  val logger = Logging(system, "Logger")
+  val health: HttpRoutes[IO] = HttpRoutes.of[IO] {
+    case req @ GET -> Root / "health" =>
+      Ok()
+  }
 
-  /** Энкодер в JSON */
-  implicit val MessageJson: RootJsonFormat[Message] = jsonFormat3(Message)
-  implicit val SyncJson: RootJsonFormat[Sync] = jsonFormat1(Sync)
+}
 
+object Server extends IOApp {
+  private val globalLogger = getLogger("Master")
 
-  /** Массив сообщений */
-  final case class Session(messages: Vector[Message])
-  implicit val SessionJson: RootJsonFormat[Session] = jsonFormat1(Session)
+  implicit val cs: ContextShift[IO] = IO.contextShift(global)
 
-  var session: Vector[Message] = Vector()
-
-  val health: Route =
-    path("health") {
-      get {
-        extractRequestContext { ctx =>
-          extractLog { log =>
-            complete {
-              log.info(s"Health check: ${ctx.request}")
-              StatusCodes.OK
-            }
-          }
-        }
-      }
-    }
-
-  val getTestJsonMessage: Route =
-    path("test") {
-      get {
-        extractRequestContext { ctx =>
-          extractLog { log =>
-            complete {
-              log.info(s"Test message: ${ctx.request}")
-              Message(1, "SERVER", "Test message")
-            }
-          }
-        }
-      }
-    }
-
-  val send: Route =
-    path("send") {
-      post {
-        extractRequestContext { ctx =>
-          extractLog { log =>
-            entity(as[Message]) { msg =>
-              log.info(s"Got message: $msg \n From: $ctx")
-              session :+= msg
-              session = session.sortWith(_.timestamp < _.timestamp)
-              log.info(s"Messages cache: $session")
-              complete(StatusCodes.OK)
-            }
-          }
-        }
-      }
-    }
-
-  val sync: Route =
-    path("sync") {
-      post {
-        extractRequestContext { ctx =>
-          extractLog { log =>
-            entity(as[Sync]) { sync =>
-              log.info(s"Got sync: $sync \n From: $ctx")
-              val messagesSinceSync = session.filter(_.timestamp > sync.timestamp)
-              complete(Session(messagesSinceSync))
-            }
-          }
-        }
-      }
-    }
-
-
-
-
-
-  /** Запуск */
   val host = "127.0.0.1"
   val port = 8080
-  val routes: Route = health ~ getTestJsonMessage ~ send ~ sync
-  val bindingFuture = Http().bindAndHandle(routes, host, port)
-  logger.info(s"Started server on: $host:$port")
 
-  /** Возможность выключить консоль */
-  println(s"Press RETURN to stop...")
-  StdIn.readLine() // let it run until user presses return
-  logger.info("Shutting down by user's request...")
+  import org.http4s.server.blaze.BlazeServerBuilder
 
-  bindingFuture
-    .flatMap(_.unbind()) // trigger unbinding from the port
-    .onComplete(_ => system.terminate()) // and shutdown when done
+  val routes: Kleisli[IO, Request[IO], Response[IO]] = Router(
+    "/" -> Routes.health
+  ).orNotFound
 
+  val loggedRoutes: Http[IO, IO] = Logger.httpApp(true, true)(routes)
+
+  override def run(args: List[String]): IO[ExitCode] =
+    BlazeServerBuilder[IO]
+      .bindHttp(port, host)
+      .withHttpApp(loggedRoutes)
+      .serve
+      .compile
+      .drain
+      .as(ExitCode.Success)
 }
