@@ -14,9 +14,15 @@ libraryDependencies += "org.log4s" %% "log4s"       % "1.8.2"
 val tapirVersion = "0.13.0"
 
 libraryDependencies ++= Seq(
-  "com.softwaremill.sttp.tapir" %% "tapir-core"             % tapirVersion,
-  "com.softwaremill.sttp.tapir" %% "tapir-http4s-server"    % tapirVersion,
-  "com.softwaremill.sttp.tapir" %% "tapir-akka-http-server" % tapirVersion
+  "com.softwaremill.sttp.tapir" %% "tapir-core"                 % tapirVersion,
+  "com.softwaremill.sttp.tapir" %% "tapir-http4s-server"        % tapirVersion,
+  "com.softwaremill.sttp.tapir" %% "tapir-akka-http-server"     % tapirVersion,
+  "com.softwaremill.sttp.tapir" %% "tapir-openapi-docs"         % tapirVersion,
+  "com.softwaremill.sttp.tapir" %% "tapir-openapi-model"        % tapirVersion,
+  "com.softwaremill.sttp.tapir" %% "tapir-json-circe"           % tapirVersion,
+  "com.softwaremill.sttp.tapir" %% "tapir-openapi-circe-yaml"   % tapirVersion,
+  "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-http4s"    % tapirVersion,
+  "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-akka-http" % tapirVersion
 )
 
 val circeVersion = "0.13.0"
