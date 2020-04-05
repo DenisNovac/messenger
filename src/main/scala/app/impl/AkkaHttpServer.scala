@@ -21,12 +21,10 @@ class AkkaHttpServer(config: ServerConfig) extends ServerImpl(config) {
 
   /** Routes Tapir to Akka Http */
   val health: Route = RoutesDescription.health.toRoute(_ => logic.health)
-  val hello: Route  = RoutesDescription.hello.toRoute(name => logic.hello(name))
-  val test: Route   = RoutesDescription.test.toRoute(_ => logic.test)
 
   val openApiRoute: RequestContext => Future[RouteResult] = new SwaggerAkka(RoutesDescription.openApiYml, "api").routes
 
-  val routes: Route = health ~ hello ~ test ~ openApiRoute
+  val routes: Route = health ~ openApiRoute
 
   // Server startup
   val bindingFuture: Future[Http.ServerBinding] = Http().bindAndHandle(routes, config.host, config.port)

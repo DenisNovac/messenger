@@ -10,29 +10,16 @@ import sttp.tapir.json.circe._
 
 object RoutesDescription extends DataEncoders {
 
-  val health: Endpoint[Unit, Unit, StatusCode, Nothing] =
+  val health: Endpoint[Unit, Unit, Message, Nothing] =
     endpoint.get
-      .in("health")    // Path
-      .out(statusCode) // Output type
-
-  val hello: Endpoint[String, Unit, String, Nothing] =
-    endpoint.get
-      .in("hello")
-      .in(query[String]("name")) // Parameter
-      .out(stringBody)
-
-  val test: Endpoint[Unit, Unit, Message, Nothing] =
-    endpoint.get
-      .in("test")
-      .out(jsonBody[Message])
+      .in("health")           // Path
+      .out(jsonBody[Message]) // Output type
 
   /**
     * List of endpoints for generating OpenAPI doc
     * */
   private val openApi: OpenAPI = List(
-    health,
-    hello,
-    test
+    health
   ).toOpenAPI("Messenger", "0.0.1")
 
   /** One only need to create with this openApiYml for each server type and it just works */
