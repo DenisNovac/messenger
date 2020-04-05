@@ -24,11 +24,13 @@ class Http4sServer(config: ServerConfig) extends ServerImpl(config) {
 
   /** Routes Tapir to Http4s */
   val health: HttpRoutes[IO] = RoutesDescription.health.toRoutes(_ => logic.health)
+  val send: HttpRoutes[IO]   = RoutesDescription.send.toRoutes(msg => logic.send(msg))
+  val sync: HttpRoutes[IO]   = RoutesDescription.sync.toRoutes(c => logic.sync(c))
 
   /** Return OpenAPI route with "/api" path */
   val openApiRoute: HttpRoutes[IO] = new SwaggerHttp4s(RoutesDescription.openApiYml, contextPath = "api").routes[IO]
 
-  val concat: HttpRoutes[IO] = health <+> openApiRoute
+  val concat: HttpRoutes[IO] = health <+> send <+> sync <+> openApiRoute
 
   val routes = Router("/" -> concat).orNotFound
 
