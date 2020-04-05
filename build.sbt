@@ -7,9 +7,11 @@ version := "0.1"
 scalaVersion := "2.13.1"
 
 /** Всё для запуска логгинга так, чтобы работало */
-libraryDependencies += "org.slf4j" % "slf4j-simple" % "1.7.30"
-libraryDependencies += "org.slf4j" % "slf4j-api"    % "1.7.30"
-libraryDependencies += "org.log4s" %% "log4s"       % "1.8.2"
+libraryDependencies += "org.slf4j"                  % "slf4j-simple"   % "1.7.30"
+libraryDependencies += "org.slf4j"                  % "slf4j-api"      % "1.7.30"
+libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
+
+libraryDependencies += "com.github.pureconfig" %% "pureconfig" % "0.12.3"
 
 val tapirVersion = "0.13.0"
 

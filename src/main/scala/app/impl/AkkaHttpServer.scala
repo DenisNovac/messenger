@@ -5,15 +5,15 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{RequestContext, Route, RouteResult}
+import app.model.ServerConfig
 
 import scala.concurrent.Future
 import cats.instances.future._
 import sttp.tapir.server.akkahttp._
 import sttp.tapir.swagger.akkahttp.SwaggerAkka
 
-import scala.io.StdIn
+class AkkaHttpServer(config: ServerConfig) extends ServerImpl(config) {
 
-object AkkaHttpServer extends App {
   implicit val system: ActorSystem = ActorSystem()
   import system.dispatcher
 
@@ -28,12 +28,13 @@ object AkkaHttpServer extends App {
 
   val routes: Route = health ~ hello ~ test ~ openApiRoute
 
-  val bindingFuture: Future[Http.ServerBinding] = Http().bindAndHandle(routes, "localhost", 8080)
+  // Server startup
+  val bindingFuture: Future[Http.ServerBinding] = Http().bindAndHandle(routes, config.host, config.port)
 
-  println(s"Press RETURN to stop...")
-  StdIn.readLine() // let it run until user presses return
+  logger.info(s"Started Akka Http server on ${config.host}:${config.port}")
 
-  bindingFuture
-    .flatMap(_.unbind())                 // trigger unbinding from the port
-    .onComplete(_ => system.terminate()) // and shutdown when done
+  override def stop(): Unit =
+    bindingFuture
+      .flatMap(_.unbind())                 // trigger unbinding from the port
+      .onComplete(_ => system.terminate()) // and shutdown when done
 }
