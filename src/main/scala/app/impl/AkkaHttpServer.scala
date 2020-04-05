@@ -1,6 +1,6 @@
 package app.impl
 
-import app.generic.{Logic, Routes}
+import app.business.{RoutesDescription, RoutesLogic}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives._
@@ -17,15 +17,16 @@ object AkkaHttpServer extends App {
   implicit val system: ActorSystem = ActorSystem()
   import system.dispatcher
 
-  val logic = new Logic[Future]
+  val logic = new RoutesLogic[Future]
 
   /** Routes Tapir to Akka Http */
-  val health: Route = Routes.health.toRoute(_ => logic.health)
-  val hello: Route  = Routes.hello.toRoute(name => logic.hello(name))
+  val health: Route = RoutesDescription.health.toRoute(_ => logic.health)
+  val hello: Route  = RoutesDescription.hello.toRoute(name => logic.hello(name))
+  val test: Route   = RoutesDescription.test.toRoute(_ => logic.test)
 
-  val openApiRoute: RequestContext => Future[RouteResult] = new SwaggerAkka(Routes.openApiYml, "api").routes
+  val openApiRoute: RequestContext => Future[RouteResult] = new SwaggerAkka(RoutesDescription.openApiYml, "api").routes
 
-  val routes: Route = health ~ hello ~ openApiRoute
+  val routes: Route = health ~ hello ~ test ~ openApiRoute
 
   val bindingFuture: Future[Http.ServerBinding] = Http().bindAndHandle(routes, "localhost", 8080)
 

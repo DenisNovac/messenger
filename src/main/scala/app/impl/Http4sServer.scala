@@ -1,6 +1,6 @@
 package app.impl
 
-import app.generic.{Logic, Routes}
+import app.business.{RoutesDescription, RoutesLogic}
 
 import scala.concurrent.ExecutionContext
 import cats.syntax.functor._
@@ -18,16 +18,17 @@ object Http4sServer extends App {
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
   implicit val timer: Timer[IO]               = IO.timer(ec)
 
-  val logic = new Logic[IO]
+  val logic = new RoutesLogic[IO]
 
   /** Routes Tapir to Http4s */
-  val health: HttpRoutes[IO] = Routes.health.toRoutes(_ => logic.health)
-  val hello: HttpRoutes[IO]  = Routes.hello.toRoutes(name => logic.hello(name))
+  val health: HttpRoutes[IO] = RoutesDescription.health.toRoutes(_ => logic.health)
+  val hello: HttpRoutes[IO]  = RoutesDescription.hello.toRoutes(name => logic.hello(name))
+  val test: HttpRoutes[IO]   = RoutesDescription.test.toRoutes(_ => logic.test)
 
   /** Return OpenAPI route with "/api" path */
-  val openApiRoute: HttpRoutes[IO] = new SwaggerHttp4s(Routes.openApiYml, contextPath = "api").routes[IO]
+  val openApiRoute: HttpRoutes[IO] = new SwaggerHttp4s(RoutesDescription.openApiYml, contextPath = "api").routes[IO]
 
-  val concat: HttpRoutes[IO] = health <+> hello <+> openApiRoute
+  val concat: HttpRoutes[IO] = health <+> hello <+> test <+> openApiRoute
 
   val routes = Router("/" -> concat).orNotFound
 
