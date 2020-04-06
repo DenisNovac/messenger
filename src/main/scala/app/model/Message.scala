@@ -1,5 +1,7 @@
 package app.model
 
+import app.model.DatabaseAbstraction.Conversation
+
 trait Message
 
 object Message {
@@ -23,4 +25,6 @@ object Message {
 
   def normalize(msg: IncomingTextMessage, author: Long): NormalizedTextMessage =
     NormalizedTextMessage(msg.conversation, msg.timestamp, msg.text, author)
+
+  case class Conversations(userConversations: Vector[Conversation])
 }

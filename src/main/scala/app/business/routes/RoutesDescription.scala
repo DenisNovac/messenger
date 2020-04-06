@@ -62,6 +62,18 @@ object RoutesDescription extends JsonCodecs {
       .tag("Messenger")
       .summary("Add user to conversation where admin")
 
+  val conversations: Endpoint[Option[String], StatusCode, Conversations, Nothing] =
+    endpoint.get
+      .in("conversations")
+      .in(auth.apiKey(cookie[Option[String]]("sessionid")))
+      .out(jsonBody[Conversations])
+      .tag("Messenger")
+      .summary("List of user's active conversations")
+      .errorOut(statusCode)
+      .errorOut(
+        statusCode(StatusCode.Unauthorized).description("Cookie is invalid or timed out")
+      )
+
   val sync: Endpoint[(Option[String], Sync), StatusCode, NormTextMessageVector, Nothing] =
     endpoint.post
       .in("sync")
@@ -88,6 +100,7 @@ object RoutesDescription extends JsonCodecs {
     health,
     send,
     addToConversation,
+    conversations,
     sync,
     signIn,
     authTest

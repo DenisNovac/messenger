@@ -93,6 +93,19 @@ class RoutesLogic[F[_]: Monad] extends LazyLogging {
     }
 
   /**
+    * List of user's active conversations
+    * */
+  def conversationsList(cookie: Option[String]): F[Either[StatusCode, Conversations]] =
+    if (AuthorizationSystem.isCookieValid(cookie)) {
+      val (user, conversations) = DatabaseAbstraction.getUserAndConversations(cookie)
+
+      Conversations(conversations).asRight[StatusCode].pure[F]
+    } else {
+      logger.error(s"Invalid cookie dropped: $cookie")
+      StatusCode.Unauthorized.asLeft[Conversations].pure[F]
+    }
+
+  /**
     * Add user to conversation. User must be an admin of this conversation.
     * @param cookie Cookie for user identification
     * @param add AddToConversation message

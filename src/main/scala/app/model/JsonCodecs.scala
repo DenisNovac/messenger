@@ -3,8 +3,10 @@ package app.model
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import Message._
+import app.model.DatabaseAbstraction.Conversation
 
 trait JsonCodecs {
+
   implicit val authEncoder: Encoder[Authorize] = deriveEncoder[Authorize]
   implicit val authDecoder: Decoder[Authorize] = deriveDecoder[Authorize]
 
@@ -25,15 +27,20 @@ trait JsonCodecs {
   /**
     * Errors codecs
     */
-  implicit val notFoundEncoder: Encoder.AsObject[NotFound] = deriveEncoder[NotFound]
-  implicit val notFoundDecoder: Decoder[NotFound]          = deriveDecoder[NotFound]
+  implicit val notFoundEncoder: Encoder[NotFound] = deriveEncoder[NotFound]
+  implicit val notFoundDecoder: Decoder[NotFound] = deriveDecoder[NotFound]
 
-  implicit val forbiddenEncoder: Encoder.AsObject[Forbidden] = deriveEncoder[Forbidden]
-  implicit val forbiddenDecoder: Decoder[Forbidden]          = deriveDecoder[Forbidden]
+  implicit val forbiddenEncoder: Encoder[Forbidden] = deriveEncoder[Forbidden]
+  implicit val forbiddenDecoder: Decoder[Forbidden] = deriveDecoder[Forbidden]
 
-  implicit val internalErrEncoder: Encoder.AsObject[InternalServerError] = deriveEncoder[InternalServerError]
-  implicit val internalErrDecoder: Decoder[InternalServerError]          = deriveDecoder[InternalServerError]
+  implicit val internalErrEncoder: Encoder[InternalServerError] = deriveEncoder[InternalServerError]
+  implicit val internalErrDecoder: Decoder[InternalServerError] = deriveDecoder[InternalServerError]
 
-  implicit val unauthEncoder: Encoder.AsObject[Unauthorized] = deriveEncoder[Unauthorized]
-  implicit val unauthDecoder: Decoder[Unauthorized]          = deriveDecoder[Unauthorized]
+  implicit val unauthEncoder: Encoder[Unauthorized] = deriveEncoder[Unauthorized]
+  implicit val unauthDecoder: Decoder[Unauthorized] = deriveDecoder[Unauthorized]
+
+  implicit val conversationE: Encoder[Conversation]   = deriveEncoder[Conversation]
+  implicit val conversationD: Decoder[Conversation]   = deriveDecoder[Conversation]
+  implicit val conversationsE: Encoder[Conversations] = deriveEncoder[Conversations]
+  implicit val conversationsD: Decoder[Conversations] = deriveDecoder[Conversations]
 }

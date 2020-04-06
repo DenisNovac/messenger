@@ -24,7 +24,7 @@ object DatabaseAbstraction extends LazyLogging {
   }
 
   private var conversations: Vector[Conversation] =
-    Vector(Conversation(getNextConversationId, "test", Vector(1), Vector(1, 2))) // one test conversation
+    Vector(Conversation(getNextConversationId, "Test Conversation", Vector(1), Vector(1, 2))) // one test conversation
 
   def updateConversations(id: Long, newConv: Conversation): Unit =
     conversations = conversations.filterNot(_.id == id) :+ Conversation(
