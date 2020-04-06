@@ -60,3 +60,11 @@ libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.6.4"
 libraryDependencies += "com.typesafe.akka" %% "akka-http"  % "10.1.11"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.1" % Test
+
+// https://github.com/softwaremill/tapir/issues/182
+assemblyMergeStrategy in assembly := {
+  case PathList(ps @ _*) if ps.last.endsWith("pom.properties") => MergeStrategy.first
+  case x =>
+    val oldStrategy = (assemblyMergeStrategy in assembly).value
+    oldStrategy(x)
+}

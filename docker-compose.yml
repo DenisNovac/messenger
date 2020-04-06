@@ -1,0 +1,10 @@
+version: "3"
+
+services:
+  messenger:
+    container_name: messenger
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - "./application.conf:/opt/app/application.conf"

@@ -120,8 +120,7 @@ object RoutesDescription extends JsonCodecs {
     authTest
   ).toOpenAPI(
     "Scala Tapir Messenger",
-    "0.0.1" +
-      ""
+    "0.0.1"
   )
 
   /** One only need to create with this openApiYml for each server type and it just works */

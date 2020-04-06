@@ -24,9 +24,23 @@ object Messenger extends App with LazyLogging {
     case _ => throw new IllegalArgumentException("No such server type. Only 'http4s' has implementation")
   }
 
-  println("Server is started. Press enter to exit...")
-  StdIn.readLine() // let it run until user presses return
-  logger.info("Shutting down by user's request...")
-  server.stop()
+  println("Server is started. Enter 'quit` to stop server...")
+
+  import scala.util.control._
+  val loop = new Breaks
+
+  loop.breakable {
+    while (true) {
+      StdIn.readLine() match {
+        case value if value.trim == "quit" =>
+          logger.info("Shutting down by user's request...")
+          server.stop()
+          loop.break
+
+        case _ =>
+          println("Enter 'quit` to stop server...")
+      }
+    }
+  }
 
 }

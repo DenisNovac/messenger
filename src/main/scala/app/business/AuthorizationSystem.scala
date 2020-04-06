@@ -55,7 +55,6 @@ object AuthorizationSystem extends LazyLogging {
     case value =>
       val millis = Instant.now().toEpochMilli + value.toMillis
       Instant.ofEpochMilli(millis).some
-    case _ => None
   }
 
   /** Checks if current time is lesser than cookie timeout */
