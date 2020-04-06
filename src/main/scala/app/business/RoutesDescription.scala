@@ -1,7 +1,7 @@
 package app.business
 
 import app.model.{DataEncoders, Message, Session, Sync}
-import sttp.model.StatusCode
+import sttp.model.{CookieValueWithMeta, StatusCode}
 import sttp.tapir._
 import sttp.tapir.openapi.OpenAPI
 import sttp.tapir.docs.openapi._
@@ -27,7 +27,7 @@ object RoutesDescription extends DataEncoders {
       .in(jsonBody[Sync])
       .out(jsonBody[Session])
 
-  val getAuth =
+  val signIn: Endpoint[Unit, StatusCode, CookieValueWithMeta, Nothing] =
     endpoint.get
       .in("auth")
       .out(setCookie("sessionid"))
@@ -47,7 +47,7 @@ object RoutesDescription extends DataEncoders {
     health,
     send,
     sync,
-    getAuth,
+    signIn,
     authTest
   ).toOpenAPI("Messenger", "0.0.1")
 

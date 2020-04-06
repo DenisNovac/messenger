@@ -1,5 +1,6 @@
 package app.impl
 
+import app.ServerConfigReader
 import app.business.{RoutesDescription, RoutesLogic}
 import app.model.ServerConfig
 
@@ -14,7 +15,9 @@ import org.http4s.HttpRoutes
 import org.http4s.server.Router
 import sttp.tapir.swagger.http4s.SwaggerHttp4s
 
-class Http4sServer(config: ServerConfig) extends ServerImpl(config) {
+class Http4sServer extends ServerImpl {
+
+  val config: ServerConfig = ServerConfigReader.config
 
   implicit val ec: ExecutionContext           = scala.concurrent.ExecutionContext.global
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
@@ -26,8 +29,8 @@ class Http4sServer(config: ServerConfig) extends ServerImpl(config) {
   val health: HttpRoutes[IO]   = RoutesDescription.health.toRoutes(_ => logic.health)
   val send: HttpRoutes[IO]     = RoutesDescription.send.toRoutes(msg => logic.send(msg))
   val sync: HttpRoutes[IO]     = RoutesDescription.sync.toRoutes(c => logic.sync(c))
-  val auth: HttpRoutes[IO]     = RoutesDescription.getAuth.toRoutes(_ => logic.getAuth())
-  val authTest: HttpRoutes[IO] = RoutesDescription.authTest.toRoutes(cookie => logic.authTest(cookie))
+  val auth: HttpRoutes[IO]     = RoutesDescription.signIn.toRoutes(_ => logic.signIn)
+  val authTest: HttpRoutes[IO] = RoutesDescription.authTest.toRoutes(cookie => logic.testAuth(cookie))
 
   /** Return OpenAPI route with "/api" path */
   val openApiRoute: HttpRoutes[IO] = new SwaggerHttp4s(RoutesDescription.openApiYml, contextPath = "api").routes[IO]

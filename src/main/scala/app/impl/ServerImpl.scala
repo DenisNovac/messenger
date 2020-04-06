@@ -4,6 +4,6 @@ import app.model.ServerConfig
 
 import com.typesafe.scalalogging.LazyLogging
 
-abstract class ServerImpl(config: ServerConfig) extends LazyLogging {
+abstract class ServerImpl extends LazyLogging {
   def stop(): Unit
 }

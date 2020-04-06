@@ -1,10 +1,8 @@
 package app.business
 
-import java.time.Instant
-
 import cats.Monad
 import cats.syntax.either._
-import cats.syntax.option._
+
 import cats.syntax.applicative._
 import app.model._
 import com.typesafe.scalalogging.LazyLogging
@@ -15,8 +13,6 @@ import sttp.model.{CookieValueWithMeta, StatusCode}
   * It may be IO (http4s) or Future (Akka Http)
   */
 class RoutesLogic[F[_]: Monad] extends LazyLogging {
-
-  val cookieTimeoutSecs = 10
 
   var session: Vector[Message] = Vector()
 
@@ -39,21 +35,11 @@ class RoutesLogic[F[_]: Monad] extends LazyLogging {
   }
 
   /** Authentication method gives cookie with "secret" for some time */
-  def getAuth(): F[Either[StatusCode, CookieValueWithMeta]] = {
-    logger.info("Giving an cookie")
-    val e: Option[Instant] = Instant.ofEpochMilli(Instant.now().toEpochMilli + cookieTimeoutSecs * 1000L).some
-
-    CookieValueWithMeta(value = "secret", expires = e, None, None, None, false, false, Map())
-      .asRight[StatusCode]
-      .pure[F]
-  }
+  def signIn: F[Either[StatusCode, CookieValueWithMeta]] =
+    AuthorizationSystem.issueCookie.asRight[StatusCode].pure[F]
 
   /** Tests cookie */
-  def authTest(cookie: Option[String]) = {
-    logger.info(s"Cookie: $cookie")
-    if (cookie.getOrElse("") == "secret")
-      StatusCode.Ok.asRight[StatusCode].pure[F]
-    else
-      StatusCode.Forbidden.asLeft[StatusCode].pure[F]
-  }
+  def testAuth(cookie: Option[String]): F[Either[StatusCode, StatusCode]] =
+    if (AuthorizationSystem.isCookieValid(cookie)) StatusCode.Ok.asRight[StatusCode].pure[F]
+    else StatusCode.Forbidden.asLeft[StatusCode].pure[F]
 }

@@ -1,11 +1,7 @@
 package app
 
 import app.impl.{AkkaHttpServer, Http4sServer, ServerImpl}
-import app.model.ServerConfig
-import cats.Monad
 import com.typesafe.scalalogging.LazyLogging
-import pureconfig.ConfigSource
-import pureconfig.generic.auto._
 
 import scala.io.StdIn
 
@@ -13,10 +9,7 @@ object Messenger extends App with LazyLogging {
 
   logger.info("Messenger is starting...")
 
-  val config: ServerConfig = ConfigSource.file("./application.conf").load[ServerConfig] match {
-    case Left(value)  => throw new Error(value.toString)
-    case Right(value) => value
-  }
+  val config = ServerConfigReader.config
 
   logger.info(s"Application config: $config")
 
@@ -24,10 +17,10 @@ object Messenger extends App with LazyLogging {
   val server: ServerImpl = config.server match {
     case "akka" =>
       logger.info("Starting Akka Http Server")
-      new AkkaHttpServer(config)
+      new AkkaHttpServer
     case "http4s" =>
       logger.info("Starting http4s server")
-      new Http4sServer(config)
+      new Http4sServer
     case _ => throw new IllegalArgumentException("No such server type. Try 'akka' or 'http4s'")
   }
 

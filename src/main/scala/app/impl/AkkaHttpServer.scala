@@ -5,6 +5,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{RequestContext, Route, RouteResult}
+import app.ServerConfigReader
 import app.model.ServerConfig
 
 import scala.concurrent.Future
@@ -12,7 +13,9 @@ import cats.instances.future._
 import sttp.tapir.server.akkahttp._
 import sttp.tapir.swagger.akkahttp.SwaggerAkka
 
-class AkkaHttpServer(config: ServerConfig) extends ServerImpl(config) {
+class AkkaHttpServer extends ServerImpl {
+
+  val config: ServerConfig = ServerConfigReader.config
 
   implicit val system: ActorSystem = ActorSystem()
   import system.dispatcher
