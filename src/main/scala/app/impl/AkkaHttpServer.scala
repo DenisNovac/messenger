@@ -13,6 +13,7 @@ import cats.instances.future._
 import sttp.tapir.server.akkahttp._
 import sttp.tapir.swagger.akkahttp.SwaggerAkka
 
+/** Deprecated for now, no development */
 class AkkaHttpServer extends ServerImpl {
 
   val config: ServerConfig = ServerConfigReader.config
@@ -23,13 +24,13 @@ class AkkaHttpServer extends ServerImpl {
   val logic = new RoutesLogic[Future]
 
   /** Routes Tapir to Akka Http */
-  val health: Route = RoutesDescription.health.toRoute(_ => logic.health)
+  /*val health: Route = RoutesDescription.health.toRoute(_ => logic.health)
   val send: Route   = RoutesDescription.send.toRoute(msg => logic.send(msg))
-  val sync: Route   = RoutesDescription.sync.toRoute(s => logic.sync(s))
+  val sync: Route   = RoutesDescription.sync.toRoute(s => logic.sync(s))*/
 
   val openApiRoute: RequestContext => Future[RouteResult] = new SwaggerAkka(RoutesDescription.openApiYml, "api").routes
 
-  val routes: Route = health ~ send ~ sync ~ openApiRoute
+  val routes: Route = /*health ~ send ~ sync ~ */ openApiRoute
 
   // Server startup
   val bindingFuture: Future[Http.ServerBinding] = Http().bindAndHandle(routes, config.host, config.port)

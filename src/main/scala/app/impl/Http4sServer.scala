@@ -26,9 +26,10 @@ class Http4sServer extends ServerImpl {
   val logic = new RoutesLogic[IO]
 
   /** Routes Tapir to Http4s */
+  // There is a LOT of errors in IDEA such as Required F Found IO. Application still compiles!
   val health: HttpRoutes[IO]   = RoutesDescription.health.toRoutes(_ => logic.health)
-  val send: HttpRoutes[IO]     = RoutesDescription.send.toRoutes(msg => logic.send(msg))
-  val sync: HttpRoutes[IO]     = RoutesDescription.sync.toRoutes(c => logic.sync(c))
+  val send: HttpRoutes[IO]     = RoutesDescription.send.toRoutes(l => logic.send(l._1, l._2))
+  val sync: HttpRoutes[IO]     = RoutesDescription.sync.toRoutes(l => logic.sync(l._1, l._2))
   val auth: HttpRoutes[IO]     = RoutesDescription.signIn.toRoutes(authMsg => logic.signIn(authMsg))
   val authTest: HttpRoutes[IO] = RoutesDescription.authTest.toRoutes(cookie => logic.testAuth(cookie))
 

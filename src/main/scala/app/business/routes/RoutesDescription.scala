@@ -1,6 +1,7 @@
 package app.business.routes
 
 import app.model._
+import app.model.Message._
 import sttp.model.{CookieValueWithMeta, StatusCode}
 import sttp.tapir._
 import sttp.tapir.docs.openapi._
@@ -13,22 +14,11 @@ import sttp.tapir.openapi.circe.yaml._
   * */
 object RoutesDescription extends DataEncoders {
 
-  val health: Endpoint[Unit, Unit, Message, Nothing] =
+  val health: Endpoint[Unit, Unit, StatusCode, Nothing] =
     endpoint.get
-      .in("health")           // Path
-      .out(jsonBody[Message]) // Output type
-
-  val send: Endpoint[Message, Unit, StatusCode, Nothing] =
-    endpoint.post
-      .in("send")
-      .in(jsonBody[Message])
-      .out(statusCode)
-
-  val sync: Endpoint[Sync, Unit, Session, Nothing] =
-    endpoint.post
-      .in("sync")
-      .in(jsonBody[Sync])
-      .out(jsonBody[Session])
+      .in("health")    // Path
+      .out(statusCode) // Output type
+      .tag("Util")
 
   val signIn: Endpoint[Authorize, StatusCode, CookieValueWithMeta, Nothing] =
     endpoint.post
@@ -36,6 +26,28 @@ object RoutesDescription extends DataEncoders {
       .in(jsonBody[Authorize])
       .out(setCookie("sessionid"))
       .errorOut(statusCode)
+      .tag("Util")
+      .summary("Sign in with user id and password")
+
+  val send: Endpoint[(Option[String], IncomingTextMessage), StatusCode, StatusCode, Nothing] =
+    endpoint.post
+      .in("send")
+      .in(auth.apiKey(cookie[Option[String]]("sessionid")))
+      .in(jsonBody[IncomingTextMessage])
+      .out(statusCode)
+      .errorOut(statusCode)
+      .tag("Messenger")
+      .summary("Send message to some conversation")
+
+  val sync: Endpoint[(Option[String], Sync), StatusCode, NormTextMessageVector, Nothing] =
+    endpoint.post
+      .in("sync")
+      .in(auth.apiKey(cookie[Option[String]]("sessionid")))
+      .in(jsonBody[Sync])
+      .out(jsonBody[NormTextMessageVector])
+      .errorOut(statusCode)
+      .tag("Messenger")
+      .summary("Get all messages from specified time from server")
 
   val authTest: Endpoint[Option[String], StatusCode, StatusCode, Nothing] =
     endpoint.get
@@ -43,6 +55,8 @@ object RoutesDescription extends DataEncoders {
       .in(auth.apiKey(cookie[Option[String]]("sessionid")))
       .out(statusCode)
       .errorOut(statusCode)
+      .tag("Util")
+      .summary("Test if cookie is valid")
 
   /**
     * List of endpoints for generating OpenAPI doc
@@ -53,7 +67,11 @@ object RoutesDescription extends DataEncoders {
     sync,
     signIn,
     authTest
-  ).toOpenAPI("Messenger", "0.0.1")
+  ).toOpenAPI(
+    "Scala Tapir Messenger",
+    "0.0.1" +
+      ""
+  )
 
   /** One only need to create with this openApiYml for each server type and it just works */
   val openApiYml: String = openApi.toYaml

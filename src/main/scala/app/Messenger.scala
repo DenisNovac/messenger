@@ -16,13 +16,12 @@ object Messenger extends App with LazyLogging {
   /** Server startup */
   val server: ServerImpl = config.server match {
     case "akka" =>
-      logger.info("Starting Akka Http Server")
-      logger.warn("Akka Http implementation may not contain full version of features!")
-      new AkkaHttpServer
+      //new AkkaHttpServer
+      throw new NotImplementedError("Akka Http implementation is not developed for now")
     case "http4s" =>
       logger.info("Starting http4s server")
       new Http4sServer
-    case _ => throw new IllegalArgumentException("No such server type. Try 'akka' or 'http4s'")
+    case _ => throw new IllegalArgumentException("No such server type. Only 'http4s' has implementation")
   }
 
   println("Server is started. Press enter to exit...")
