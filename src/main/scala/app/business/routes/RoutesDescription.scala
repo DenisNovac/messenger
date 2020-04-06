@@ -29,13 +29,21 @@ object RoutesDescription extends JsonCodecs {
       .tag("Messenger")
       .summary("Sign in with user id and password")
 
-  val send: Endpoint[(Option[String], IncomingTextMessage), StatusCode, StatusCode, Nothing] =
+  val send: Endpoint[(Option[String], IncomingTextMessage), ErrorInfo, StatusCode, Nothing] =
     endpoint.post
       .in("send")
       .in(auth.apiKey(cookie[Option[String]]("sessionid")))
       .in(jsonBody[IncomingTextMessage])
       .out(statusCode)
-      .errorOut(statusCode)
+      .errorOut(
+        oneOf(
+          statusMapping(StatusCode.NotFound, jsonBody[NotFound].description("Conversation not found")),
+          statusMapping(
+            StatusCode.Unauthorized,
+            jsonBody[Unauthorized].description("Cookie timed out or does not exists")
+          )
+        )
+      )
       .tag("Messenger")
       .summary("Send message to some conversation")
 

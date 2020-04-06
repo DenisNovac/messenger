@@ -47,7 +47,7 @@ class RoutesLogic[F[_]: Monad] extends LazyLogging {
     * @param msg Message
     * @return
     */
-  def send(cookie: Option[String], msg: IncomingTextMessage): F[Either[StatusCode, StatusCode]] =
+  def send(cookie: Option[String], msg: IncomingTextMessage): F[Either[ErrorInfo, StatusCode]] =
     if (AuthorizationSystem.isCookieValid(cookie)) {
 
       val (user, conversations) = DatabaseAbstraction.getUserAndConversations(cookie)
@@ -55,15 +55,17 @@ class RoutesLogic[F[_]: Monad] extends LazyLogging {
       // check if this messages is for suitable conversation
       if (conversations.map(_.id).contains(msg.conversation)) {
         DatabaseAbstraction.putMessage(normalize(msg, user.id))
-        StatusCode.Ok.asRight[StatusCode].pure[F]
+        StatusCode.Ok.asRight[ErrorInfo].pure[F]
       } else {
         logger.error(s"Not found conversation ${msg.conversation} for user ${user.id}")
-        StatusCode.NotFound.asRight[StatusCode].pure[F]
+        val r: ErrorInfo = NotFound("Conversation not found")
+        r.asLeft[StatusCode].pure[F]
       }
 
     } else {
       logger.error(s"Invalid cookie dropped: $cookie")
-      StatusCode.Unauthorized.asLeft[StatusCode].pure[F]
+      val r: ErrorInfo = Unauthorized()
+      r.asLeft[StatusCode].pure[F]
     }
 
   /**
@@ -183,8 +185,7 @@ class RoutesLogic[F[_]: Monad] extends LazyLogging {
 
     } else {
       logger.error(s"Invalid cookie dropped: $cookie")
-      StatusCode.Unauthorized.asLeft[StatusCode].pure[F]
-      val r: ErrorInfo = Unauthorized("Cookie timed out or invalid")
+      val r: ErrorInfo = Unauthorized()
       r.asLeft[StatusCode].pure[F]
     }
 
