@@ -29,7 +29,7 @@ class Http4sServer extends ServerImpl {
   val health: HttpRoutes[IO]   = RoutesDescription.health.toRoutes(_ => logic.health)
   val send: HttpRoutes[IO]     = RoutesDescription.send.toRoutes(msg => logic.send(msg))
   val sync: HttpRoutes[IO]     = RoutesDescription.sync.toRoutes(c => logic.sync(c))
-  val auth: HttpRoutes[IO]     = RoutesDescription.signIn.toRoutes(_ => logic.signIn)
+  val auth: HttpRoutes[IO]     = RoutesDescription.signIn.toRoutes(authMsg => logic.signIn(authMsg))
   val authTest: HttpRoutes[IO] = RoutesDescription.authTest.toRoutes(cookie => logic.testAuth(cookie))
 
   /** Return OpenAPI route with "/api" path */

@@ -2,7 +2,7 @@ package app.business
 
 import cats.Monad
 import cats.syntax.either._
-
+import cats.syntax.option._
 import cats.syntax.applicative._
 import app.model._
 import com.typesafe.scalalogging.LazyLogging
@@ -35,8 +35,11 @@ class RoutesLogic[F[_]: Monad] extends LazyLogging {
   }
 
   /** Authentication method gives cookie with "secret" for some time */
-  def signIn: F[Either[StatusCode, CookieValueWithMeta]] =
-    AuthorizationSystem.issueCookie.asRight[StatusCode].pure[F]
+  def signIn(authMsg: Authorize): F[Either[StatusCode, CookieValueWithMeta]] =
+    AuthorizationSystem.authorize(authMsg) match {
+      case Some(value) => value.asRight[StatusCode].pure[F]
+      case None        => StatusCode.Forbidden.asLeft[CookieValueWithMeta].pure[F]
+    }
 
   /** Tests cookie */
   def testAuth(cookie: Option[String]): F[Either[StatusCode, StatusCode]] =

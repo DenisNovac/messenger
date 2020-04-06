@@ -4,7 +4,7 @@ import java.time.Instant
 import java.util.UUID
 
 import app.ServerConfigReader
-import app.model.ServerConfig
+import app.model.{Authorize, ServerConfig}
 import sttp.model.{CookieValueWithMeta, StatusCode}
 
 import scala.concurrent.duration.FiniteDuration
@@ -17,6 +17,11 @@ object AuthorizationSystem extends LazyLogging {
   val cookieTimeout: FiniteDuration = config.sessionTimeout
 
   private var cookies: Map[String, (CookieValueWithMeta, Option[Instant])] = Map.empty
+
+  private val users: Map[String, String] = Map(
+    "denis" -> "123",
+    "filya" -> "456"
+  )
 
   private def getExpiration: Option[Instant] = cookieTimeout match {
     case value if value.toSeconds == 0 => None
@@ -32,13 +37,16 @@ object AuthorizationSystem extends LazyLogging {
     case None => true // None is infinite cookie
   }
 
-  def issueCookie: CookieValueWithMeta = {
-    val id: String = UUID.randomUUID().toString
-    val expires    = getExpiration
-    val cookie     = CookieValueWithMeta(value = id, expires = expires, None, None, None, false, false, Map())
-    cookies += id -> (cookie, expires)
-    cookie
-  }
+  def authorize(authMsg: Authorize): Option[CookieValueWithMeta] =
+    users.get(authMsg.id) match {
+      case Some(pwd) if authMsg.password == pwd =>
+        val id: String = UUID.randomUUID().toString
+        val expires    = getExpiration
+        val cookie     = CookieValueWithMeta(value = id, expires = expires, None, None, None, false, false, Map())
+        cookies += id -> (cookie, expires)
+        cookie.some
+      case None => None
+    }
 
   def isCookieValid(cookie: Option[String]): Boolean = {
     val id = cookie.getOrElse("")
