@@ -16,16 +16,23 @@ libraryDependencies += "com.github.pureconfig" %% "pureconfig" % "0.12.3"
 val tapirVersion = "0.13.0"
 
 libraryDependencies ++= Seq(
-  "com.softwaremill.sttp.tapir" %% "tapir-core"                 % tapirVersion,
-  "com.softwaremill.sttp.tapir" %% "tapir-http4s-server"        % tapirVersion,
-  "com.softwaremill.sttp.tapir" %% "tapir-akka-http-server"     % tapirVersion,
-  "com.softwaremill.sttp.tapir" %% "tapir-openapi-docs"         % tapirVersion,
-  "com.softwaremill.sttp.tapir" %% "tapir-openapi-model"        % tapirVersion,
-  "com.softwaremill.sttp.tapir" %% "tapir-json-circe"           % tapirVersion,
-  "com.softwaremill.sttp.tapir" %% "tapir-openapi-circe-yaml"   % tapirVersion,
-  "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-http4s"    % tapirVersion,
-  "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-akka-http" % tapirVersion
-)
+  "com.softwaremill.sttp.tapir" %% "tapir-core",
+  "com.softwaremill.sttp.tapir" %% "tapir-http4s-server",
+  "com.softwaremill.sttp.tapir" %% "tapir-akka-http-server",
+  "com.softwaremill.sttp.tapir" %% "tapir-openapi-docs",
+  "com.softwaremill.sttp.tapir" %% "tapir-openapi-model",
+  "com.softwaremill.sttp.tapir" %% "tapir-json-circe",
+  "com.softwaremill.sttp.tapir" %% "tapir-openapi-circe-yaml",
+  "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-http4s",
+  "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-akka-http"
+).map(_ % tapirVersion)
+
+val doobieVersion = "0.8.8"
+
+libraryDependencies ++= Seq(
+  "org.tpolecat" %% "doobie-core",
+  "org.tpolecat" %% "doobie-postgres"
+).map(_ % doobieVersion)
 
 val circeVersion = "0.13.0"
 
@@ -38,19 +45,19 @@ libraryDependencies ++= Seq(
 val catsVersion = "2.1.1"
 
 libraryDependencies ++= Seq(
-  "org.typelevel" %% "cats-core"   % catsVersion,
-  "org.typelevel" %% "cats-effect" % catsVersion
-)
+  "org.typelevel" %% "cats-core",
+  "org.typelevel" %% "cats-effect"
+).map(_ % catsVersion)
 
 /** Servers */
 val http4sVersion = "0.21.3"
 
 libraryDependencies ++= Seq(
-  "org.http4s" %% "http4s-core"         % http4sVersion,
-  "org.http4s" %% "http4s-server"       % http4sVersion,
-  "org.http4s" %% "http4s-blaze-server" % http4sVersion,
-  "org.http4s" %% "http4s-dsl"          % http4sVersion
-)
+  "org.http4s" %% "http4s-core",
+  "org.http4s" %% "http4s-server",
+  "org.http4s" %% "http4s-blaze-server",
+  "org.http4s" %% "http4s-dsl"
+).map(_ % http4sVersion)
 
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.6.4"
 libraryDependencies += "com.typesafe.akka" %% "akka-http"  % "10.1.11"

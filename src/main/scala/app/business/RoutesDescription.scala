@@ -27,13 +27,28 @@ object RoutesDescription extends DataEncoders {
       .in(jsonBody[Sync])
       .out(jsonBody[Session])
 
+  val getAuth =
+    endpoint.get
+      .in("auth")
+      .out(setCookie("sessionid"))
+      .errorOut(statusCode)
+
+  val authTest: Endpoint[Option[String], StatusCode, StatusCode, Nothing] =
+    endpoint.get
+      .in("authTest")
+      .in(auth.apiKey(cookie[Option[String]]("sessionid")))
+      .out(statusCode)
+      .errorOut(statusCode)
+
   /**
     * List of endpoints for generating OpenAPI doc
     * */
   private val openApi: OpenAPI = List(
     health,
     send,
-    sync
+    sync,
+    getAuth,
+    authTest
   ).toOpenAPI("Messenger", "0.0.1")
 
   /** One only need to create with this openApiYml for each server type and it just works */

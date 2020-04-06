@@ -7,6 +7,7 @@ sealed trait Data
 final case class Message(timestamp: Int, user: String, text: String) extends Data
 final case class Sync(timestamp: Int)                                extends Data
 final case class Session(messages: Vector[Message])                  extends Data
+final case class Authorize(id: String, password: String)             extends Data
 
 /**
   * Trait with JSON-encoders and decoders.
@@ -21,4 +22,7 @@ trait DataEncoders {
 
   implicit val sessionEncoder: Encoder.AsObject[Session] = deriveEncoder[Session]
   implicit val sessionDecoder: Decoder[Session]          = deriveDecoder[Session]
+
+  implicit val authEncoder: Encoder.AsObject[Authorize] = deriveEncoder[Authorize]
+  implicit val authDecoder: Decoder[Authorize]          = deriveDecoder[Authorize]
 }
