@@ -3,7 +3,7 @@ package app.business.routes
 import app.business.AuthorizationSystem
 import app.model.Message._
 import app.model.{DatabaseAbstraction, ErrorInfo, Forbidden, InternalServerError, NotFound, Unauthorized}
-import app.model.DatabaseAbstraction.Conversation
+import app.model.DatabaseAbstraction.{Conversation, User}
 import cats.Monad
 import cats.syntax.applicative._
 import cats.syntax.either._
@@ -101,74 +101,70 @@ class RoutesLogic[F[_]: Monad] extends LazyLogging {
   def addToConversation(cookie: Option[String], add: AddToConversation): F[Either[ErrorInfo, StatusCode]] =
     if (AuthorizationSystem.isCookieValid(cookie)) {
 
-      val (user, conversations) = DatabaseAbstraction.getUserAndConversations(cookie)
+      val (maybeAdmin, conversations) = DatabaseAbstraction.getUserAndConversations(cookie)
 
-      conversations.toList.filter(_.id == add.conversationId) match {
+      (
+        conversations.toList.filter(_.id == add.conversationId),
+        DatabaseAbstraction.getUserById(add.newUserId)
+      ) match {
 
-        /** Conversation exists and user is an admin here */
-        case conversation :: Nil if conversation.admins.contains(user.id) =>
-          DatabaseAbstraction.getUserById(add.newUserId) match {
+        /** Conversation (only one) and user exists, performed by admin of conversation */
+        case (conversation :: Nil, Some(newUser)) if conversation.admins.contains(maybeAdmin.id) =>
+          if (conversation.participants.contains(newUser.id)) {
+            StatusCode.Ok.asRight[ErrorInfo].pure[F] // just OK without welcome message, user is already here
+          } else {
+            logger.info(
+              s"User ${maybeAdmin.prettyName} adds user ${newUser.prettyName} to conversation ${add.conversationId}"
+            )
 
-            /** User is already in conversation */
-            case Some(value) if conversation.participants.contains(value.id) =>
-              logger.error(
-                s"User ${user.prettyName} tried to add user ${value.prettyName} to conversation ${add.conversationId} while this user is already here"
-              )
-              StatusCode.Ok.asRight[ErrorInfo].pure[F]
-
-            /** User exists and not in the conversation yet */
-            case Some(value) =>
-              logger.info(
-                s"User ${user.prettyName} adds user ${value.prettyName} to conversation ${add.conversationId}"
-              )
-              // Send message to notify all users in conversation
-              DatabaseAbstraction.putMessage(
-                normalize(
-                  IncomingTextMessage(
-                    add.conversationId,
-                    1,
-                    s"${user.prettyName} adds user ${value.prettyName} to this conversation"
-                  ),
-                  user.id
-                )
-              )
-
-              // New list of participants with new user
-              val newParticipantsList = conversation.participants :+ value.id
-              DatabaseAbstraction.updateConversations(
+            val welcome = normalize(
+              IncomingTextMessage(
                 add.conversationId,
-                Conversation(add.conversationId, conversation.name, conversation.admins, newParticipantsList)
-              )
-              StatusCode.Ok.asRight[ErrorInfo].pure[F]
+                1,
+                s"${maybeAdmin.prettyName} adds user ${newUser.prettyName} to this conversation"
+              ),
+              maybeAdmin.id
+            )
 
-            /** User not exists*/
-            case None =>
-              logger.info(
-                s"User ${user.prettyName} tried to add non-existing user ${add.newUserId} to conversation ${add.conversationId}"
-              )
+            DatabaseAbstraction.putMessage(welcome)
 
-              val r: ErrorInfo = NotFound("User not found")
-              r.asLeft[StatusCode].pure[F]
+            // New list of participants with new user
+            val newParticipantsList = conversation.participants :+ newUser.id
+            DatabaseAbstraction.updateConversations(
+              add.conversationId,
+              Conversation(add.conversationId, conversation.name, conversation.admins, newParticipantsList)
+            )
+            StatusCode.Ok.asRight[ErrorInfo].pure[F]
           }
 
-        /** Conversation exists but user is not an admin */
-        case x :: Nil =>
+        /** User is not an admin */
+        case (conversation :: Nil, Some(newUser)) =>
           logger.error(
-            s"User ${user.id} tried to add user ${add.newUserId} to conversation ${add.conversationId} where he is not an admin"
+            s"${maybeAdmin.prettyName} tried to add user ${add.newUserId} to conversation ${add.conversationId} without privileges"
           )
           val r: ErrorInfo = Forbidden("No privileges to add users in this conversation")
           r.asLeft[StatusCode].pure[F]
 
-        case x :: xs =>
-          logger.error(s"There is more than one conversations with id ${add.conversationId}")
-          val r: ErrorInfo = InternalServerError("More with one conversations with such id")
-          r.asLeft[StatusCode].pure[F]
-
-        case Nil =>
+        /** No such conversation */
+        case (Nil, _) =>
           logger.error(
-            s"User ${user.id} tried to add user ${add.newUserId} to not existing conversation ${add.conversationId}"
+            s"User ${maybeAdmin.id} tried to add user ${add.newUserId} to not existing conversation ${add.conversationId}"
           )
           val r: ErrorInfo = NotFound("Conversation not found")
+          r.asLeft[StatusCode].pure[F]
+
+        /** No such user */
+        case (_, None) =>
+          logger.info(
+            s"${maybeAdmin.prettyName} tried to add non-existing user ${add.newUserId} to conversation ${add.conversationId}"
+          )
+          val r: ErrorInfo = NotFound("User not found")
+          r.asLeft[StatusCode].pure[F]
+
+        /** Multiple conversations with one id */
+        case (x :: xs, _) =>
+          logger.error(s"Multiple conversations with id ${add.conversationId}")
+          val r: ErrorInfo = InternalServerError("Multiple conversations with one id")
           r.asLeft[StatusCode].pure[F]
       }
 
