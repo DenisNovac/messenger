@@ -12,7 +12,7 @@ import sttp.tapir.openapi.circe.yaml._
 /**
   * Tapir routes description with OpenAPI spec generation
   * */
-object RoutesDescription extends DataEncoders {
+object RoutesDescription extends JsonCodecs {
 
   val health: Endpoint[Unit, Unit, StatusCode, Nothing] =
     endpoint.get
@@ -39,13 +39,26 @@ object RoutesDescription extends DataEncoders {
       .tag("Messenger")
       .summary("Send message to some conversation")
 
-  val addToConversation: Endpoint[(Option[String], AddToConversation), StatusCode, StatusCode, Nothing] =
+  val addToConversation: Endpoint[(Option[String], AddToConversation), ErrorInfo, StatusCode, Nothing] =
     endpoint.post
       .in("addToConversation")
       .in(auth.apiKey(cookie[Option[String]]("sessionid")))
       .in(jsonBody[AddToConversation])
       .out(statusCode)
-      .errorOut(statusCode)
+      .errorOut(
+        oneOf(
+          statusMapping(StatusCode.NotFound, jsonBody[NotFound].description("User or Conversation was not found")),
+          statusMapping(
+            StatusCode.Unauthorized,
+            jsonBody[Unauthorized].description("Cookie timed out or does not exists")
+          ),
+          statusMapping(
+            StatusCode.InternalServerError,
+            jsonBody[InternalServerError].description("More than one conversation with such id")
+          ),
+          statusMapping(StatusCode.Forbidden, jsonBody[Forbidden].description("No privileges for this conversation"))
+        )
+      )
       .tag("Messenger")
       .summary("Add user to conversation where admin")
 

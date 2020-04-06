@@ -4,7 +4,7 @@ import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import Message._
 
-trait DataEncoders {
+trait JsonCodecs {
   implicit val authEncoder: Encoder[Authorize] = deriveEncoder[Authorize]
   implicit val authDecoder: Decoder[Authorize] = deriveDecoder[Authorize]
 
@@ -21,4 +21,19 @@ trait DataEncoders {
 
   implicit val addToConvEncoder: Encoder[AddToConversation] = deriveEncoder[AddToConversation]
   implicit val addToConvDecoder: Decoder[AddToConversation] = deriveDecoder[AddToConversation]
+
+  /**
+    * Errors codecs
+    */
+  implicit val notFoundEncoder: Encoder.AsObject[NotFound] = deriveEncoder[NotFound]
+  implicit val notFoundDecoder: Decoder[NotFound]          = deriveDecoder[NotFound]
+
+  implicit val forbiddenEncoder: Encoder.AsObject[Forbidden] = deriveEncoder[Forbidden]
+  implicit val forbiddenDecoder: Decoder[Forbidden]          = deriveDecoder[Forbidden]
+
+  implicit val internalErrEncoder: Encoder.AsObject[InternalServerError] = deriveEncoder[InternalServerError]
+  implicit val internalErrDecoder: Decoder[InternalServerError]          = deriveDecoder[InternalServerError]
+
+  implicit val unauthEncoder: Encoder.AsObject[Unauthorized] = deriveEncoder[Unauthorized]
+  implicit val unauthDecoder: Decoder[Unauthorized]          = deriveDecoder[Unauthorized]
 }

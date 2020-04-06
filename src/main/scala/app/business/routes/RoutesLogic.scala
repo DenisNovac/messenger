@@ -2,7 +2,7 @@ package app.business.routes
 
 import app.business.AuthorizationSystem
 import app.model.Message._
-import app.model.DatabaseAbstraction
+import app.model.{DatabaseAbstraction, ErrorInfo, Forbidden, InternalServerError, NotFound, Unauthorized}
 import app.model.DatabaseAbstraction.Conversation
 import cats.Monad
 import cats.syntax.applicative._
@@ -92,7 +92,13 @@ class RoutesLogic[F[_]: Monad] extends LazyLogging {
       StatusCode.Unauthorized.asLeft[NormTextMessageVector].pure[F]
     }
 
-  def addToConversation(cookie: Option[String], add: AddToConversation): F[Either[StatusCode, StatusCode]] =
+  /**
+    * Add user to conversation. User must be an admin of this conversation.
+    * @param cookie Cookie for user identification
+    * @param add AddToConversation message
+    * @return
+    */
+  def addToConversation(cookie: Option[String], add: AddToConversation): F[Either[ErrorInfo, StatusCode]] =
     if (AuthorizationSystem.isCookieValid(cookie)) {
 
       val (user, conversations) = DatabaseAbstraction.getUserAndConversations(cookie)
@@ -103,15 +109,17 @@ class RoutesLogic[F[_]: Monad] extends LazyLogging {
         case conversation :: Nil if conversation.admins.contains(user.id) =>
           DatabaseAbstraction.getUserById(add.newUserId) match {
 
+            /** User is already in conversation */
             case Some(value) if conversation.participants.contains(value.id) =>
               logger.error(
                 s"User ${user.prettyName} tried to add user ${value.prettyName} to conversation ${add.conversationId} while this user is already here"
               )
-              StatusCode.Ok.asRight[StatusCode].pure[F]
+              StatusCode.Ok.asRight[ErrorInfo].pure[F]
 
+            /** User exists and not in the conversation yet */
             case Some(value) =>
               logger.info(
-                s"User ${user.prettyName} added user ${value.prettyName} to conversation ${add.conversationId}"
+                s"User ${user.prettyName} adds user ${value.prettyName} to conversation ${add.conversationId}"
               )
               // Send message to notify all users in conversation
               DatabaseAbstraction.putMessage(
@@ -125,18 +133,22 @@ class RoutesLogic[F[_]: Monad] extends LazyLogging {
                 )
               )
 
+              // New list of participants with new user
               val newParticipantsList = conversation.participants :+ value.id
               DatabaseAbstraction.updateConversations(
                 add.conversationId,
                 Conversation(add.conversationId, conversation.name, conversation.admins, newParticipantsList)
               )
-              StatusCode.Ok.asRight[StatusCode].pure[F]
+              StatusCode.Ok.asRight[ErrorInfo].pure[F]
 
+            /** User not exists*/
             case None =>
               logger.info(
                 s"User ${user.prettyName} tried to add non-existing user ${add.newUserId} to conversation ${add.conversationId}"
               )
-              StatusCode.NotFound.asLeft[StatusCode].pure[F]
+
+              val r: ErrorInfo = NotFound("User not found")
+              r.asLeft[StatusCode].pure[F]
           }
 
         /** Conversation exists but user is not an admin */
@@ -144,22 +156,27 @@ class RoutesLogic[F[_]: Monad] extends LazyLogging {
           logger.error(
             s"User ${user.id} tried to add user ${add.newUserId} to conversation ${add.conversationId} where he is not an admin"
           )
-          StatusCode.Forbidden.asLeft[StatusCode].pure[F]
+          val r: ErrorInfo = Forbidden("No privileges to add users in this conversation")
+          r.asLeft[StatusCode].pure[F]
 
         case x :: xs =>
           logger.error(s"There is more than one conversations with id ${add.conversationId}")
-          StatusCode.InternalServerError.asLeft[StatusCode].pure[F]
+          val r: ErrorInfo = InternalServerError("More with one conversations with such id")
+          r.asLeft[StatusCode].pure[F]
 
         case Nil =>
           logger.error(
             s"User ${user.id} tried to add user ${add.newUserId} to not existing conversation ${add.conversationId}"
           )
-          StatusCode.NotFound.asLeft[StatusCode].pure[F]
+          val r: ErrorInfo = NotFound("Conversation not found")
+          r.asLeft[StatusCode].pure[F]
       }
 
     } else {
       logger.error(s"Invalid cookie dropped: $cookie")
       StatusCode.Unauthorized.asLeft[StatusCode].pure[F]
+      val r: ErrorInfo = Unauthorized("Cookie timed out or invalid")
+      r.asLeft[StatusCode].pure[F]
     }
 
 }
