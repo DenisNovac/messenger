@@ -6,11 +6,38 @@ import app.model.Message._
 import com.typesafe.scalalogging.LazyLogging
 import sttp.model.CookieValueWithMeta
 
+/** In-memory structure for chat */
 object DatabaseAbstraction extends LazyLogging {
 
-  case class User(id: Long, name: String, password: String)
-  case class Conversation(id: Long, participants: Vector[Long])
+  case class User(id: Long, name: String, password: String) {
+    def prettyName: String = s"$name#$id" // name like Sam#111
+  }
+  case class Conversation(id: Long, name: String, admins: Vector[Long], participants: Vector[Long])
+
   case class CookieBody(user: User, expires: Option[Instant], body: CookieValueWithMeta)
+
+  private var conversationIdCounter = 0
+
+  def getNextConversationId: Long = {
+    conversationIdCounter += 1
+    conversationIdCounter
+  }
+
+  private var conversations: Vector[Conversation] =
+    Vector(Conversation(getNextConversationId, "test", Vector(1), Vector(1, 2))) // one test conversation
+
+  def updateConversations(id: Long, newConv: Conversation): Unit =
+    conversations = conversations.filterNot(_.id == id) :+ Conversation(
+      id,
+      newConv.name,
+      newConv.admins,
+      newConv.participants
+    )
+
+  def getConversations: Vector[Conversation] = {
+    val c = conversations
+    c
+  }
 
   val users: Map[Long, User] = Map(
     1L -> User(1, "denis", "123"),
@@ -18,29 +45,17 @@ object DatabaseAbstraction extends LazyLogging {
     3L -> User(3, "anon", "anon")
   )
 
+  def getUserById(id: Long): Option[User] =
+    users.get(id)
+
   private var messages: Vector[NormalizedTextMessage] = Vector.empty
 
-  def putMessage(msg: NormalizedTextMessage): Unit = {
-    logger.info(s"New message: $msg")
+  def putMessage(msg: NormalizedTextMessage): Unit =
     messages :+= msg
-  }
 
   def getMessages: Vector[NormalizedTextMessage] = {
     val v = messages
     v
-  }
-
-  private var conversations: Vector[Conversation] =
-    Vector(Conversation(1, Vector(1, 2))) // one test conversation
-
-  def startConversation(cnv: Conversation): Unit = {
-    logger.info(s"New conversation: $cnv")
-    conversations :+= cnv
-  }
-
-  def getConversations: Vector[Conversation] = {
-    val c = conversations
-    c
   }
 
   /** Issued cookies from authorization */
@@ -56,10 +71,10 @@ object DatabaseAbstraction extends LazyLogging {
     * Util method which gives user and his conversations from cookie.
     * It is useful since cookie is in every request and there is no usernames after authorization
     * */
-  def getUserAndConversations(cookie: Option[String]): (User, Vector[Long]) = {
+  def getUserAndConversations(cookie: Option[String]): (User, Vector[Conversation]) = {
     val user: User = DatabaseAbstraction.getCookie(cookie.get).get.user
-    val userConversations: Vector[Long] =
-      DatabaseAbstraction.getConversations.filter(_.participants.contains(user.id)).map(_.id)
+    val userConversations: Vector[Conversation] =
+      DatabaseAbstraction.getConversations.filter(_.participants.contains(user.id))
 
     (user, userConversations)
   }

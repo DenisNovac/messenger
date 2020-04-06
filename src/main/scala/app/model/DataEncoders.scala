@@ -18,4 +18,7 @@ trait DataEncoders {
   implicit val normMessageDecoder: Decoder[NormalizedTextMessage]  = deriveDecoder[NormalizedTextMessage]
   implicit val messagesListEncoder: Encoder[NormTextMessageVector] = deriveEncoder[NormTextMessageVector]
   implicit val messagesListDecoder: Decoder[NormTextMessageVector] = deriveDecoder[NormTextMessageVector]
+
+  implicit val addToConvEncoder: Encoder[AddToConversation] = deriveEncoder[AddToConversation]
+  implicit val addToConvDecoder: Decoder[AddToConversation] = deriveDecoder[AddToConversation]
 }

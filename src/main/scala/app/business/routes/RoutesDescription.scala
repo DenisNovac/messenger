@@ -26,7 +26,7 @@ object RoutesDescription extends DataEncoders {
       .in(jsonBody[Authorize])
       .out(setCookie("sessionid"))
       .errorOut(statusCode)
-      .tag("Util")
+      .tag("Messenger")
       .summary("Sign in with user id and password")
 
   val send: Endpoint[(Option[String], IncomingTextMessage), StatusCode, StatusCode, Nothing] =
@@ -38,6 +38,16 @@ object RoutesDescription extends DataEncoders {
       .errorOut(statusCode)
       .tag("Messenger")
       .summary("Send message to some conversation")
+
+  val addToConversation: Endpoint[(Option[String], AddToConversation), StatusCode, StatusCode, Nothing] =
+    endpoint.post
+      .in("addToConversation")
+      .in(auth.apiKey(cookie[Option[String]]("sessionid")))
+      .in(jsonBody[AddToConversation])
+      .out(statusCode)
+      .errorOut(statusCode)
+      .tag("Messenger")
+      .summary("Add user to conversation where admin")
 
   val sync: Endpoint[(Option[String], Sync), StatusCode, NormTextMessageVector, Nothing] =
     endpoint.post
@@ -64,6 +74,7 @@ object RoutesDescription extends DataEncoders {
   private val openApi: OpenAPI = List(
     health,
     send,
+    addToConversation,
     sync,
     signIn,
     authTest

@@ -3,7 +3,7 @@ package app.business.routes
 import app.business.AuthorizationSystem
 import app.model.Message._
 import app.model.DatabaseAbstraction
-
+import app.model.DatabaseAbstraction.Conversation
 import cats.Monad
 import cats.syntax.applicative._
 import cats.syntax.either._
@@ -53,11 +53,11 @@ class RoutesLogic[F[_]: Monad] extends LazyLogging {
       val (user, conversations) = DatabaseAbstraction.getUserAndConversations(cookie)
 
       // check if this messages is for suitable conversation
-      if (conversations.contains(msg.conversation)) {
+      if (conversations.map(_.id).contains(msg.conversation)) {
         DatabaseAbstraction.putMessage(normalize(msg, user.id))
         StatusCode.Ok.asRight[StatusCode].pure[F]
       } else {
-        logger.error(s"Not found conversation ${msg.conversation} for user $user")
+        logger.error(s"Not found conversation ${msg.conversation} for user ${user.id}")
         StatusCode.NotFound.asRight[StatusCode].pure[F]
       }
 
@@ -69,7 +69,7 @@ class RoutesLogic[F[_]: Monad] extends LazyLogging {
   /**
     * Return only messages from specified in Sync timestamp and only from conversations where this user
     * participates.
-    * @param cookie cookie for user identification
+    * @param cookie Cookie for user identification
     * @param s Sync message
     * @return
     */
@@ -78,18 +78,88 @@ class RoutesLogic[F[_]: Monad] extends LazyLogging {
 
       val (user, conversations) = DatabaseAbstraction.getUserAndConversations(cookie)
 
-      logger.info(s"Sync request from user $user: $s")
+      logger.info(s"Sync request from user ${user.id}: $s")
 
       val messagesSinceSync =
         DatabaseAbstraction.getMessages
-          .filter(m => conversations.contains(m.conversation)) // Messages with suitable conversations
-          .filter(_.timestamp > s.timestamp)                   // And wanted timestamp
+          .filter(m => conversations.map(_.id).contains(m.conversation)) // Messages from conversation of this user
+          .filter(_.timestamp > s.timestamp)                             // And wanted timestamp
 
       NormTextMessageVector(messagesSinceSync).asRight[StatusCode].pure[F]
 
     } else {
       logger.error(s"Invalid cookie dropped: $cookie")
       StatusCode.Unauthorized.asLeft[NormTextMessageVector].pure[F]
+    }
+
+  def addToConversation(cookie: Option[String], add: AddToConversation): F[Either[StatusCode, StatusCode]] =
+    if (AuthorizationSystem.isCookieValid(cookie)) {
+
+      val (user, conversations) = DatabaseAbstraction.getUserAndConversations(cookie)
+
+      conversations.toList.filter(_.id == add.conversationId) match {
+
+        /** Conversation exists and user is an admin here */
+        case conversation :: Nil if conversation.admins.contains(user.id) =>
+          DatabaseAbstraction.getUserById(add.newUserId) match {
+
+            case Some(value) if conversation.participants.contains(value.id) =>
+              logger.error(
+                s"User ${user.prettyName} tried to add user ${value.prettyName} to conversation ${add.conversationId} while this user is already here"
+              )
+              StatusCode.Ok.asRight[StatusCode].pure[F]
+
+            case Some(value) =>
+              logger.info(
+                s"User ${user.prettyName} added user ${value.prettyName} to conversation ${add.conversationId}"
+              )
+              // Send message to notify all users in conversation
+              DatabaseAbstraction.putMessage(
+                normalize(
+                  IncomingTextMessage(
+                    add.conversationId,
+                    1,
+                    s"${user.prettyName} adds user ${value.prettyName} to this conversation"
+                  ),
+                  user.id
+                )
+              )
+
+              val newParticipantsList = conversation.participants :+ value.id
+              DatabaseAbstraction.updateConversations(
+                add.conversationId,
+                Conversation(add.conversationId, conversation.name, conversation.admins, newParticipantsList)
+              )
+              StatusCode.Ok.asRight[StatusCode].pure[F]
+
+            case None =>
+              logger.info(
+                s"User ${user.prettyName} tried to add non-existing user ${add.newUserId} to conversation ${add.conversationId}"
+              )
+              StatusCode.NotFound.asLeft[StatusCode].pure[F]
+          }
+
+        /** Conversation exists but user is not an admin */
+        case x :: Nil =>
+          logger.error(
+            s"User ${user.id} tried to add user ${add.newUserId} to conversation ${add.conversationId} where he is not an admin"
+          )
+          StatusCode.Forbidden.asLeft[StatusCode].pure[F]
+
+        case x :: xs =>
+          logger.error(s"There is more than one conversations with id ${add.conversationId}")
+          StatusCode.InternalServerError.asLeft[StatusCode].pure[F]
+
+        case Nil =>
+          logger.error(
+            s"User ${user.id} tried to add user ${add.newUserId} to not existing conversation ${add.conversationId}"
+          )
+          StatusCode.NotFound.asLeft[StatusCode].pure[F]
+      }
+
+    } else {
+      logger.error(s"Invalid cookie dropped: $cookie")
+      StatusCode.Unauthorized.asLeft[StatusCode].pure[F]
     }
 
 }

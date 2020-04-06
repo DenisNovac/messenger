@@ -27,16 +27,17 @@ class Http4sServer extends ServerImpl {
 
   /** Routes Tapir to Http4s */
   // There is a LOT of errors in IDEA such as Required F Found IO. Application still compiles!
-  val health: HttpRoutes[IO]   = RoutesDescription.health.toRoutes(_ => logic.health)
-  val send: HttpRoutes[IO]     = RoutesDescription.send.toRoutes(l => logic.send(l._1, l._2))
-  val sync: HttpRoutes[IO]     = RoutesDescription.sync.toRoutes(l => logic.sync(l._1, l._2))
-  val auth: HttpRoutes[IO]     = RoutesDescription.signIn.toRoutes(authMsg => logic.signIn(authMsg))
-  val authTest: HttpRoutes[IO] = RoutesDescription.authTest.toRoutes(cookie => logic.testAuth(cookie))
+  val health: HttpRoutes[IO]    = RoutesDescription.health.toRoutes(_ => logic.health)
+  val send: HttpRoutes[IO]      = RoutesDescription.send.toRoutes(l => logic.send(l._1, l._2))
+  val sync: HttpRoutes[IO]      = RoutesDescription.sync.toRoutes(l => logic.sync(l._1, l._2))
+  val addToConv: HttpRoutes[IO] = RoutesDescription.addToConversation.toRoutes(l => logic.addToConversation(l._1, l._2))
+  val auth: HttpRoutes[IO]      = RoutesDescription.signIn.toRoutes(authMsg => logic.signIn(authMsg))
+  val authTest: HttpRoutes[IO]  = RoutesDescription.authTest.toRoutes(cookie => logic.testAuth(cookie))
 
   /** Return OpenAPI route with "/api" path */
   val openApiRoute: HttpRoutes[IO] = new SwaggerHttp4s(RoutesDescription.openApiYml, contextPath = "api").routes[IO]
 
-  val concat: HttpRoutes[IO] = health <+> send <+> sync <+> auth <+> authTest <+> openApiRoute
+  val concat: HttpRoutes[IO] = health <+> send <+> sync <+> auth <+> authTest <+> addToConv <+> openApiRoute
 
   val routes = Router("/" -> concat).orNotFound
 
