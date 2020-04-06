@@ -1,7 +1,7 @@
 package app.impl
 
 import app.ServerConfigReader
-import app.business.{RoutesDescription, RoutesLogic}
+import app.business.routes.{RoutesDescription, RoutesLogic}
 import app.model.ServerConfig
 
 import scala.concurrent.ExecutionContext

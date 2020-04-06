@@ -1,13 +1,16 @@
-package app.business
+package app.business.routes
 
-import app.model.{Authorize, DataEncoders, Message, Session, Sync}
+import app.model._
 import sttp.model.{CookieValueWithMeta, StatusCode}
 import sttp.tapir._
-import sttp.tapir.openapi.OpenAPI
 import sttp.tapir.docs.openapi._
-import sttp.tapir.openapi.circe.yaml._
 import sttp.tapir.json.circe._
+import sttp.tapir.openapi.OpenAPI
+import sttp.tapir.openapi.circe.yaml._
 
+/**
+  * Tapir routes description with OpenAPI spec generation
+  * */
 object RoutesDescription extends DataEncoders {
 
   val health: Endpoint[Unit, Unit, Message, Nothing] =

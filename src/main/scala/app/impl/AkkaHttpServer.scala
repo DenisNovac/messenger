@@ -1,11 +1,11 @@
 package app.impl
 
-import app.business.{RoutesDescription, RoutesLogic}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{RequestContext, Route, RouteResult}
 import app.ServerConfigReader
+import app.business.routes.{RoutesDescription, RoutesLogic}
 import app.model.ServerConfig
 
 import scala.concurrent.Future
