@@ -28,6 +28,9 @@ object RoutesDescription extends JsonCodecs {
       .errorOut(statusCode)
       .tag("Messenger")
       .summary("Sign in with user id and password")
+      .errorOut(
+        statusCode(StatusCode.Forbidden).description("Invalid user ID or password")
+      )
 
   val send: Endpoint[(Option[String], IncomingTextMessage), ErrorInfo, StatusCode, Nothing] =
     endpoint.post
@@ -70,6 +73,9 @@ object RoutesDescription extends JsonCodecs {
       .tag("Messenger")
       .summary("Add user to conversation where admin")
 
+  /**
+    * For some reason you need TWO .errorOut for .get methods and only one for Post (see signIn)
+    */
   val conversations: Endpoint[Option[String], StatusCode, Conversations, Nothing] =
     endpoint.get
       .in("conversations")
