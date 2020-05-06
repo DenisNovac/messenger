@@ -5,9 +5,9 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{RequestContext, Route, RouteResult}
 import app.ServerConfigReader
-import app.business.routes.RoutesLogic
 import app.controllers.OpenApiController
 import app.model.ServerConfig
+import app.services._
 
 import scala.concurrent.Future
 import cats.instances.future._
@@ -22,7 +22,9 @@ class AkkaHttpServer extends ServerImpl {
   implicit val system: ActorSystem = ActorSystem()
   import system.dispatcher
 
-  val logic = new RoutesLogic[Future]
+  val utilService = new UtilService[Future]
+  val msgService  = new MessagingService[Future]
+  val authService = new AuthService[Future]
 
   /** Routes Tapir to Akka Http */
   /*val health: Route = RoutesDescription.health.toRoute(_ => logic.health)

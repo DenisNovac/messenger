@@ -1,11 +1,12 @@
 package app.impl
 
 import app.ServerConfigReader
-import app.business.routes.RoutesLogic
+
 import app.controllers._
+import app.services._
 import app.model.ServerConfig
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import cats.syntax.functor._
 import cats.syntax.semigroupk._
 import cats.effect.{CancelToken, ContextShift, ExitCode, IO, Timer}
@@ -24,22 +25,25 @@ class Http4sServer extends ServerImpl {
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
   implicit val timer: Timer[IO]               = IO.timer(ec)
 
-  val logic = new RoutesLogic[IO]
+  /** Services for IO */
+  val utilService = new UtilService[IO]
+  val msgService  = new MessagingService[IO]
+  val authService = new AuthService[IO]
 
   /** Routes Tapir to Http4s */
   // There is a LOT of errors in IDEA such as Required F Found IO. Application still compiles!
-  val health: HttpRoutes[IO]   = UtilController.health.toRoutes(_ => logic.health)
-  val auth: HttpRoutes[IO]     = AuthController.signIn.toRoutes(authMsg => logic.signIn(authMsg))
-  val authTest: HttpRoutes[IO] = AuthController.authTest.toRoutes(cookie => logic.testAuth(cookie))
+  val health: HttpRoutes[IO]   = UtilController.health.toRoutes(_ => utilService.health)
+  val auth: HttpRoutes[IO]     = AuthController.signIn.toRoutes(authMsg => authService.signIn(authMsg))
+  val authTest: HttpRoutes[IO] = AuthController.authTest.toRoutes(cookie => authService.testAuth(cookie))
 
-  val send: HttpRoutes[IO] = MessagingController.send.toRoutes(l => logic.send(l._1, l._2))
-  val sync: HttpRoutes[IO] = MessagingController.sync.toRoutes(l => logic.sync(l._1, l._2))
+  val send: HttpRoutes[IO] = MessagingController.send.toRoutes(l => msgService.send(l._1, l._2))
+  val sync: HttpRoutes[IO] = MessagingController.sync.toRoutes(l => msgService.sync(l._1, l._2))
 
   val addToConversation: HttpRoutes[IO] =
-    MessagingController.addToConversation.toRoutes(l => logic.addToConversation(l._1, l._2))
+    MessagingController.addToConversation.toRoutes(l => msgService.addToConversation(l._1, l._2))
 
   val conversations: HttpRoutes[IO] =
-    MessagingController.conversations.toRoutes(cookie => logic.conversationsList(cookie))
+    MessagingController.conversations.toRoutes(cookie => msgService.conversationsList(cookie))
 
   /** Return OpenAPI route with "/api" path */
   val openApiRoute: HttpRoutes[IO] = new SwaggerHttp4s(OpenApiController.openApiYml, contextPath = "api").routes[IO]
@@ -49,7 +53,7 @@ class Http4sServer extends ServerImpl {
 
   val routes = Router("/" -> concat).orNotFound
 
-  val server: IO[ExitCode] = BlazeServerBuilder[IO]
+  val server: IO[ExitCode] = BlazeServerBuilder[IO](ec)
     .bindHttp(config.port, config.host)
     .withHttpApp(routes)
     .serve
