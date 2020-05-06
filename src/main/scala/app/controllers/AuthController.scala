@@ -1,11 +1,12 @@
 package app.controllers
 
+import app.model.JsonCodecs
 import app.model.Message.Authorize
 import sttp.model.{CookieValueWithMeta, StatusCode}
 import sttp.tapir.json.circe.jsonBody
 import sttp.tapir.{auth, cookie, endpoint, setCookie, statusCode, Endpoint}
 
-object AuthController {
+object AuthController extends JsonCodecs {
 
   val signIn: Endpoint[Authorize, StatusCode, CookieValueWithMeta, Nothing] =
     endpoint.post

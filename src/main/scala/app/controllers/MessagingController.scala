@@ -23,7 +23,7 @@ object MessagingController extends JsonCodecs {
           )
         )
       )
-      .tag("Messenger")
+      .tag("Messaging")
       .summary("Send message to some conversation")
 
   val addToConversation: Endpoint[(Option[String], AddToConversation), ErrorInfo, StatusCode, Nothing] =
@@ -46,7 +46,7 @@ object MessagingController extends JsonCodecs {
           statusMapping(StatusCode.Forbidden, jsonBody[Forbidden].description("No privileges for this conversation"))
         )
       )
-      .tag("Messenger")
+      .tag("Messaging")
       .summary("Add user to conversation where admin")
 
   /**
@@ -57,7 +57,7 @@ object MessagingController extends JsonCodecs {
       .in("conversations")
       .in(auth.apiKey(cookie[Option[String]]("sessionid")))
       .out(jsonBody[Conversations])
-      .tag("Messenger")
+      .tag("Messaging")
       .summary("List of user's active conversations")
       .errorOut(statusCode)
       .errorOut(
@@ -71,6 +71,6 @@ object MessagingController extends JsonCodecs {
       .in(jsonBody[Sync])
       .out(jsonBody[NormTextMessageVector])
       .errorOut(statusCode)
-      .tag("Messenger")
+      .tag("Messaging")
       .summary("Get all messages from specified time from server")
 }
