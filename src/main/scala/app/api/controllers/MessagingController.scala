@@ -1,45 +1,16 @@
-package app.business.routes
+package app.api.controllers
 
-import app.business.AuthorizationSystem
-import app.model.Message._
+import app.api.services.AuthService
+import app.model.DatabaseAbstraction.Conversation
 import app.model.{DatabaseAbstraction, ErrorInfo, Forbidden, InternalServerError, NotFound, Unauthorized}
-import app.model.DatabaseAbstraction.{Conversation, User}
+import app.model.Message.{AddToConversation, Conversations, IncomingTextMessage, NormTextMessageVector, Sync, normalize}
 import cats.Monad
-import cats.syntax.applicative._
 import cats.syntax.either._
+import cats.syntax.applicative._
 import com.typesafe.scalalogging.LazyLogging
-import sttp.model.{CookieValueWithMeta, StatusCode}
+import sttp.model.StatusCode
 
-/**
-  * Logic is separate from routes definitions. It is initialized by server implementation.
-  * It may be IO (http4s) or Future (Akka Http)
-  */
-class RoutesLogic[F[_]: Monad] extends LazyLogging {
-
-  /** Returns 200 */
-  def health: F[Either[Unit, StatusCode]] =
-    StatusCode.Ok
-      .asRight[Unit]
-      .pure[F]
-
-  /** Authorization method issues cookie for users */
-  def signIn(authMsg: Authorize): F[Either[StatusCode, CookieValueWithMeta]] =
-    AuthorizationSystem.authorize(authMsg) match {
-      case Some(value) =>
-        logger.info(s"User ${authMsg.id} successfully authorized")
-        value.asRight[StatusCode].pure[F]
-      case None =>
-        logger.warn(s"User ${authMsg.id} couldn't authorize")
-        StatusCode.Forbidden.asLeft[CookieValueWithMeta].pure[F]
-    }
-
-  /** Validate cookie */
-  def testAuth(cookie: Option[String]): F[Either[StatusCode, StatusCode]] =
-    if (AuthorizationSystem.isCookieValid(cookie)) {
-      StatusCode.Ok.asRight[StatusCode].pure[F]
-    } else {
-      StatusCode.Unauthorized.asLeft[StatusCode].pure[F]
-    }
+class MessagingController[F[_]: Monad] extends LazyLogging {
 
   /**
     * Send messages only if user authorized and participates in conversation
@@ -48,7 +19,7 @@ class RoutesLogic[F[_]: Monad] extends LazyLogging {
     * @return
     */
   def send(cookie: Option[String], msg: IncomingTextMessage): F[Either[ErrorInfo, StatusCode]] =
-    if (AuthorizationSystem.isCookieValid(cookie)) {
+    if (AuthService.isCookieValid(cookie)) {
 
       val (user, conversations) = DatabaseAbstraction.getUserAndConversations(cookie)
 
@@ -76,7 +47,7 @@ class RoutesLogic[F[_]: Monad] extends LazyLogging {
     * @return
     */
   def sync(cookie: Option[String], s: Sync): F[Either[StatusCode, NormTextMessageVector]] =
-    if (AuthorizationSystem.isCookieValid(cookie)) {
+    if (AuthService.isCookieValid(cookie)) {
 
       val (user, conversations) = DatabaseAbstraction.getUserAndConversations(cookie)
 
@@ -98,7 +69,7 @@ class RoutesLogic[F[_]: Monad] extends LazyLogging {
     * List of user's active conversations
     * */
   def conversationsList(cookie: Option[String]): F[Either[StatusCode, Conversations]] =
-    if (AuthorizationSystem.isCookieValid(cookie)) {
+    if (AuthService.isCookieValid(cookie)) {
       val (user, conversations) = DatabaseAbstraction.getUserAndConversations(cookie)
 
       Conversations(conversations).asRight[StatusCode].pure[F]
@@ -114,7 +85,7 @@ class RoutesLogic[F[_]: Monad] extends LazyLogging {
     * @return
     */
   def addToConversation(cookie: Option[String], add: AddToConversation): F[Either[ErrorInfo, StatusCode]] =
-    if (AuthorizationSystem.isCookieValid(cookie)) {
+    if (AuthService.isCookieValid(cookie)) {
 
       val (maybeAdmin, conversations) = DatabaseAbstraction.getUserAndConversations(cookie)
 
@@ -188,5 +159,4 @@ class RoutesLogic[F[_]: Monad] extends LazyLogging {
       val r: ErrorInfo = Unauthorized()
       r.asLeft[StatusCode].pure[F]
     }
-
 }

@@ -1,20 +1,18 @@
-package app.business
+package app.api.services
 
 import java.time.Instant
 import java.util.UUID
 
 import app.ServerConfigReader
-import app.model.ServerConfig
-import app.model.Message._
-import sttp.model.{CookieValueWithMeta}
+import app.model.Message.Authorize
+import app.model.{DatabaseAbstraction, ServerConfig}
+import com.typesafe.scalalogging.LazyLogging
+import sttp.model.CookieValueWithMeta
+import cats.syntax.option._
 
 import scala.concurrent.duration.FiniteDuration
-import cats.syntax.option._
-import com.typesafe.scalalogging.LazyLogging
 
-import app.model.DatabaseAbstraction
-
-object AuthorizationSystem extends LazyLogging {
+object AuthService extends LazyLogging {
 
   val config: ServerConfig          = ServerConfigReader.config
   val cookieTimeout: FiniteDuration = config.sessionTimeout
