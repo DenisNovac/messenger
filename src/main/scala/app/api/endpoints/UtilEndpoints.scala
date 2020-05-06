@@ -1,9 +1,9 @@
-package app.controllers
+package app.api.endpoints
 
 import sttp.model.StatusCode
 import sttp.tapir.{endpoint, statusCode, Endpoint}
 
-object UtilController {
+object UtilEndpoints {
 
   val health: Endpoint[Unit, Unit, StatusCode, Nothing] =
     endpoint.get

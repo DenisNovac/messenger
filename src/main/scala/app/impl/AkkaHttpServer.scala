@@ -5,9 +5,9 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{RequestContext, Route, RouteResult}
 import app.ServerConfigReader
-import app.controllers.OpenApiController
+import app.api.endpoints.OpenApiEndpoint
 import app.model.ServerConfig
-import app.services._
+import app.api.controllers._
 
 import scala.concurrent.Future
 import cats.instances.future._
@@ -22,16 +22,16 @@ class AkkaHttpServer extends ServerImpl {
   implicit val system: ActorSystem = ActorSystem()
   import system.dispatcher
 
-  val utilService = new UtilService[Future]
-  val msgService  = new MessagingService[Future]
-  val authService = new AuthService[Future]
+  val utilService = new UtilController[Future]
+  val msgService  = new MessagingController[Future]
+  val authService = new AuthController[Future]
 
   /** Routes Tapir to Akka Http */
   /*val health: Route = RoutesDescription.health.toRoute(_ => logic.health)
   val send: Route   = RoutesDescription.send.toRoute(msg => logic.send(msg))
   val sync: Route   = RoutesDescription.sync.toRoute(s => logic.sync(s))*/
 
-  val openApiRoute: RequestContext => Future[RouteResult] = new SwaggerAkka(OpenApiController.openApiYml, "api").routes
+  val openApiRoute: RequestContext => Future[RouteResult] = new SwaggerAkka(OpenApiEndpoint.openApiYml, "api").routes
 
   val routes: Route = /*health ~ send ~ sync ~ */ openApiRoute
 

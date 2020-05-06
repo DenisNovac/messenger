@@ -1,22 +1,22 @@
-package app.controllers
+package app.api.endpoints
 
 import sttp.tapir.docs.openapi._
 import sttp.tapir.openapi.OpenAPI
 import sttp.tapir.openapi.circe.yaml._
 
-object OpenApiController {
+object OpenApiEndpoint {
 
   /**
     * List of endpoints for generating OpenAPI doc
     * */
   private val openApi: OpenAPI = List(
-    UtilController.health,
-    AuthController.signIn,
-    AuthController.authTest,
-    MessagingController.send,
-    MessagingController.addToConversation,
-    MessagingController.conversations,
-    MessagingController.sync
+    UtilEndpoints.health,
+    AuthEndpoints.signIn,
+    AuthEndpoints.authTest,
+    MessagingEndpoints.send,
+    MessagingEndpoints.addToConversation,
+    MessagingEndpoints.conversations,
+    MessagingEndpoints.sync
   ).toOpenAPI(
     "Scala Tapir Messenger",
     "0.0.1"

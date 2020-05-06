@@ -1,4 +1,4 @@
-package app.controllers
+package app.api.endpoints
 
 import app.model.Message._
 import app.model._
@@ -6,7 +6,7 @@ import sttp.model.StatusCode
 import sttp.tapir.json.circe.jsonBody
 import sttp.tapir.{auth, cookie, endpoint, oneOf, statusCode, statusMapping, Endpoint}
 
-object MessagingController extends JsonCodecs {
+object MessagingEndpoints extends JsonCodecs {
 
   val send: Endpoint[(Option[String], IncomingTextMessage), ErrorInfo, StatusCode, Nothing] =
     endpoint.post

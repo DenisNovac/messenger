@@ -1,16 +1,16 @@
-package app.services
+package app.api.controllers
 
-import app.business.AuthorizationSystem
+import app.api.services.AuthService
 import app.model.DatabaseAbstraction.Conversation
 import app.model.{DatabaseAbstraction, ErrorInfo, Forbidden, InternalServerError, NotFound, Unauthorized}
-import app.model.Message.{normalize, AddToConversation, Conversations, IncomingTextMessage, NormTextMessageVector, Sync}
+import app.model.Message.{AddToConversation, Conversations, IncomingTextMessage, NormTextMessageVector, Sync, normalize}
 import cats.Monad
 import cats.syntax.either._
 import cats.syntax.applicative._
 import com.typesafe.scalalogging.LazyLogging
 import sttp.model.StatusCode
 
-class MessagingService[F[_]: Monad] extends LazyLogging {
+class MessagingController[F[_]: Monad] extends LazyLogging {
 
   /**
     * Send messages only if user authorized and participates in conversation
@@ -19,7 +19,7 @@ class MessagingService[F[_]: Monad] extends LazyLogging {
     * @return
     */
   def send(cookie: Option[String], msg: IncomingTextMessage): F[Either[ErrorInfo, StatusCode]] =
-    if (AuthorizationSystem.isCookieValid(cookie)) {
+    if (AuthService.isCookieValid(cookie)) {
 
       val (user, conversations) = DatabaseAbstraction.getUserAndConversations(cookie)
 
@@ -47,7 +47,7 @@ class MessagingService[F[_]: Monad] extends LazyLogging {
     * @return
     */
   def sync(cookie: Option[String], s: Sync): F[Either[StatusCode, NormTextMessageVector]] =
-    if (AuthorizationSystem.isCookieValid(cookie)) {
+    if (AuthService.isCookieValid(cookie)) {
 
       val (user, conversations) = DatabaseAbstraction.getUserAndConversations(cookie)
 
@@ -69,7 +69,7 @@ class MessagingService[F[_]: Monad] extends LazyLogging {
     * List of user's active conversations
     * */
   def conversationsList(cookie: Option[String]): F[Either[StatusCode, Conversations]] =
-    if (AuthorizationSystem.isCookieValid(cookie)) {
+    if (AuthService.isCookieValid(cookie)) {
       val (user, conversations) = DatabaseAbstraction.getUserAndConversations(cookie)
 
       Conversations(conversations).asRight[StatusCode].pure[F]
@@ -85,7 +85,7 @@ class MessagingService[F[_]: Monad] extends LazyLogging {
     * @return
     */
   def addToConversation(cookie: Option[String], add: AddToConversation): F[Either[ErrorInfo, StatusCode]] =
-    if (AuthorizationSystem.isCookieValid(cookie)) {
+    if (AuthService.isCookieValid(cookie)) {
 
       val (maybeAdmin, conversations) = DatabaseAbstraction.getUserAndConversations(cookie)
 
