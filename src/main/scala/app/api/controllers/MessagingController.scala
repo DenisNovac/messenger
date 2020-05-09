@@ -1,8 +1,7 @@
 package app.api.controllers
 
 import app.api.services.AuthService
-import app.model.DatabaseAbstraction.Conversation
-import app.model.{DatabaseAbstraction, ErrorInfo, Forbidden, InternalServerError, NotFound, Unauthorized}
+import app.model.{ErrorInfo, Forbidden, InMemoryDatabase, InternalServerError, NotFound, Unauthorized}
 import app.model._
 import app.model.NormalizedTextMessage.normalize
 import cats.Monad
@@ -22,11 +21,11 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
   def send(cookie: Option[String], msg: IncomingTextMessage): F[Either[ErrorInfo, StatusCode]] =
     if (AuthService.isCookieValid(cookie)) {
 
-      val (user, conversations) = DatabaseAbstraction.getUserAndConversations(cookie)
+      val (user, conversations) = InMemoryDatabase.getUserAndConversations(cookie)
 
       // check if this messages is for suitable conversation
       if (conversations.map(_.id).contains(msg.conversation)) {
-        DatabaseAbstraction.putMessage(normalize(msg, user.id))
+        InMemoryDatabase.putMessage(normalize(msg, user.id))
         StatusCode.Ok.asRight[ErrorInfo].pure[F]
       } else {
         logger.error(s"Not found conversation ${msg.conversation} for user ${user.id}")
@@ -50,12 +49,12 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
   def sync(cookie: Option[String], s: Sync): F[Either[StatusCode, NormalizedTextMessageVector]] =
     if (AuthService.isCookieValid(cookie)) {
 
-      val (user, conversations) = DatabaseAbstraction.getUserAndConversations(cookie)
+      val (user, conversations) = InMemoryDatabase.getUserAndConversations(cookie)
 
       logger.info(s"Sync request from user ${user.id}: $s")
 
       val messagesSinceSync =
-        DatabaseAbstraction.getMessages
+        InMemoryDatabase.getMessages
           .filter(m => conversations.map(_.id).contains(m.conversation)) // Messages from conversation of this user
           .filter(_.timestamp > s.timestamp)                             // And wanted timestamp
           .sortWith((msg1, msg2) => msg1.timestamp < msg2.timestamp)
@@ -72,7 +71,7 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
     * */
   def conversationsList(cookie: Option[String]): F[Either[StatusCode, Conversations]] =
     if (AuthService.isCookieValid(cookie)) {
-      val (user, conversations) = DatabaseAbstraction.getUserAndConversations(cookie)
+      val (user, conversations) = InMemoryDatabase.getUserAndConversations(cookie)
 
       Conversations(conversations).asRight[StatusCode].pure[F]
     } else {
@@ -89,16 +88,16 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
   def addToConversation(cookie: Option[String], add: AddToConversation): F[Either[ErrorInfo, StatusCode]] =
     if (AuthService.isCookieValid(cookie)) {
 
-      val (maybeAdmin, conversations) = DatabaseAbstraction.getUserAndConversations(cookie)
+      val (maybeAdmin, conversations) = InMemoryDatabase.getUserAndConversations(cookie)
 
       (
         conversations.toList.filter(_.id == add.conversationId),
-        DatabaseAbstraction.getUserById(add.newUserId)
+        InMemoryDatabase.getUserById(add.newUserId)
       ) match {
 
         /** Conversation (only one) and user exists, performed by admin of conversation */
-        case (conversation :: Nil, Some(newUser)) if conversation.admins.contains(maybeAdmin.id) =>
-          if (conversation.participants.contains(newUser.id)) {
+        case (conversation :: Nil, Some(newUser)) if conversation.body.admins.contains(maybeAdmin.id) =>
+          if (conversation.body.participants.contains(newUser.id)) {
             StatusCode.Ok.asRight[ErrorInfo].pure[F] // just OK without welcome message, user is already here
           } else {
             logger.info(
@@ -114,13 +113,13 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
               maybeAdmin.id
             )
 
-            DatabaseAbstraction.putMessage(welcome)
+            InMemoryDatabase.putMessage(welcome)
 
             // New list of participants with new user
-            val newParticipantsList = conversation.participants :+ newUser.id
-            DatabaseAbstraction.updateConversations(
+            val newParticipantsList = conversation.body.participants :+ newUser.id
+            InMemoryDatabase.updateConversation(
               add.conversationId,
-              Conversation(add.conversationId, conversation.name, conversation.admins, newParticipantsList)
+              ConversationBody(conversation.body.name, conversation.body.admins, newParticipantsList)
             )
             StatusCode.Ok.asRight[ErrorInfo].pure[F]
           }

@@ -1,6 +1,5 @@
 package app.model
 
-import app.model.DatabaseAbstraction.Conversation
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 

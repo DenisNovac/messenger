@@ -4,8 +4,7 @@ import java.time.Instant
 import java.util.UUID
 
 import app.ServerConfigReader
-import app.model.Authorize
-import app.model.{DatabaseAbstraction, ServerConfig}
+import app.model.{Authorize, CookieBody, InMemoryDatabase, ServerConfig}
 import com.typesafe.scalalogging.LazyLogging
 import sttp.model.CookieValueWithMeta
 import cats.syntax.option._
@@ -19,16 +18,16 @@ object AuthService extends LazyLogging {
 
   /** Checks user-password pair and issues and cookie if user exist */
   def authorize(authMsg: Authorize): Option[CookieValueWithMeta] =
-    DatabaseAbstraction.users.get(authMsg.id) match {
+    InMemoryDatabase.users.get(authMsg.id) match {
 
       case Some(user) if authMsg.password == user.password =>
-        val id: String = UUID.randomUUID().toString
+        val id: String = UUID.randomUUID().toString // id is the value of cookie and database id
         val expires    = getExpiration
-        val cookie     = CookieValueWithMeta(value = id, expires = expires, None, None, None, false, false, Map())
+        val cookie =
+          CookieValueWithMeta(value = id, expires = expires, None, None, None, secure = false, httpOnly = false, Map())
 
-        val cookieBody = DatabaseAbstraction.CookieBody(user, expires, cookie)
-
-        DatabaseAbstraction.putCookie(id, cookieBody)
+        val cookieBody = CookieBody(user, expires, cookie)
+        InMemoryDatabase.putCookie(id, cookieBody)
         cookie.some
 
       case _ => None
@@ -38,10 +37,10 @@ object AuthService extends LazyLogging {
   def isCookieValid(cookie: Option[String]): Boolean = {
     val id = cookie.getOrElse("")
 
-    DatabaseAbstraction.getCookie(id) match {
+    InMemoryDatabase.getCookie(id) match {
       case Some(value) =>
-        isNotExpired(value.expires) &&                      // cookie is not expired
-          DatabaseAbstraction.users.contains(value.user.id) // cookie belongs to real user
+        isNotExpired(value.expires) &&                   // cookie is not expired
+          InMemoryDatabase.users.contains(value.user.id) // cookie belongs to real user
       case None => false
     }
 

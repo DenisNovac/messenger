@@ -2,25 +2,14 @@ package app.model
 
 import java.time.Instant
 
+import app.api.services.db.DatabaseService
 import com.typesafe.scalalogging.LazyLogging
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import sttp.model.CookieValueWithMeta
 
 /** In-memory structure for chat */
-object DatabaseAbstraction extends LazyLogging {
-
-  case class User(id: Long, name: String, password: String) {
-    def prettyName: String = s"$name#$id" // name like Sam#111
-  }
-  case class Conversation(id: Long, name: String, admins: Vector[Long], participants: Vector[Long])
-
-  object Conversation {
-    implicit val enc: Encoder[Conversation] = deriveEncoder[Conversation]
-    implicit val dec: Decoder[Conversation] = deriveDecoder[Conversation]
-  }
-
-  case class CookieBody(user: User, expires: Option[Instant], body: CookieValueWithMeta)
+object InMemoryDatabase extends DatabaseService with LazyLogging {
 
   private var conversationIdCounter = 0
 
@@ -30,17 +19,15 @@ object DatabaseAbstraction extends LazyLogging {
   }
 
   private var conversations: Vector[Conversation] =
-    Vector(Conversation(getNextConversationId, "Test Conversation", Vector(1), Vector(1, 2))) // one test conversation
+    Vector(Conversation(getNextConversationId, ConversationBody("Test Conversation", Vector(1), Vector(1, 2)))) // one test conversation
 
-  def updateConversations(id: Long, newConv: Conversation): Unit =
+  def updateConversation(id: Long, newConv: ConversationBody): Unit =
     conversations = conversations.filterNot(_.id == id) :+ Conversation(
       id,
-      newConv.name,
-      newConv.admins,
-      newConv.participants
+      newConv
     )
 
-  def getConversations: Vector[Conversation] = {
+  override def getUserConversations: Vector[Conversation] = {
     val c = conversations
     c
   }
@@ -77,12 +64,15 @@ object DatabaseAbstraction extends LazyLogging {
     * Util method which gives user and his conversations from cookie.
     * It is useful since cookie is in every request and there is no usernames after authorization
     * */
-  def getUserAndConversations(cookie: Option[String]): (User, Vector[Conversation]) = {
-    val user: User = DatabaseAbstraction.getCookie(cookie.get).get.user
+  override def getUserAndConversations(cookie: Option[String]): (User, Vector[Conversation]) = {
+    val user: User = InMemoryDatabase.getCookie(cookie.get).get.user
     val userConversations: Vector[Conversation] =
-      DatabaseAbstraction.getConversations.filter(_.participants.contains(user.id))
+      InMemoryDatabase.getUserConversations.filter(_.body.participants.contains(user.id))
 
     (user, userConversations)
   }
 
+  override def getUserByEmail(id: Long): Option[User]          = ???
+  override def createConversation(newConv: Conversation): Unit = ???
+  override def removeConversation(id: Long): Unit              = ???
 }
