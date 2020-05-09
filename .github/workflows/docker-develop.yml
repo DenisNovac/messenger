@@ -17,6 +17,14 @@ jobs:
         with:
           java-version: 13
 
+      # Проверка кодстайла
+      - name: Run scalafmt tests on build.sbt
+        run:  sbt scalafmtSbtCheck
+
+      - name: Run scalafmt tests on code
+        run: sbt scalafmtCheck
+
+      # Запуск тестов
       - name: Run tests
         run: sbt test
 
