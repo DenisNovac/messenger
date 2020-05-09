@@ -1,6 +1,7 @@
 package app
 
 import app.impl.{AkkaHttpServer, Http4sServer, ServerImpl}
+import app.init.Init
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.io.StdIn
@@ -9,7 +10,7 @@ object Messenger extends App with LazyLogging {
 
   logger.info("Messenger is starting...")
 
-  val config = ServerConfigReader.config
+  val config = Init.config
 
   logger.info(s"Application config: $config")
 

@@ -1,9 +1,8 @@
 package app.impl
 
-import app.ServerConfigReader
-
 import app.api.endpoints._
 import app.api.controllers._
+import app.init.Init
 import app.model.ServerConfig
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -19,7 +18,7 @@ import sttp.tapir.swagger.http4s.SwaggerHttp4s
 
 class Http4sServer extends ServerImpl {
 
-  val config: ServerConfig = ServerConfigReader.config
+  val config: ServerConfig = Init.config
 
   implicit val ec: ExecutionContext           = scala.concurrent.ExecutionContext.global
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)

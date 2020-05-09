@@ -3,8 +3,8 @@ package app.api.services
 import java.time.Instant
 import java.util.UUID
 
-import app.ServerConfigReader
 import app.api.services.db.InMemoryDatabase
+import app.init.Init
 import app.model.{Authorize, CookieBody, ServerConfig}
 import com.typesafe.scalalogging.LazyLogging
 import sttp.model.CookieValueWithMeta
@@ -14,7 +14,7 @@ import scala.concurrent.duration.FiniteDuration
 
 object AuthService extends LazyLogging {
 
-  val config: ServerConfig          = ServerConfigReader.config
+  val config: ServerConfig          = Init.config
   val cookieTimeout: FiniteDuration = config.sessionTimeout
 
   /** Checks user-password pair and issues and cookie if user exist */

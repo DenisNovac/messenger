@@ -4,10 +4,10 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{RequestContext, Route, RouteResult}
-import app.ServerConfigReader
 import app.api.endpoints.OpenApiEndpoint
 import app.model.ServerConfig
 import app.api.controllers._
+import app.init.Init
 
 import scala.concurrent.Future
 import cats.instances.future._
@@ -17,7 +17,7 @@ import sttp.tapir.swagger.akkahttp.SwaggerAkka
 /** Deprecated for now, no development */
 class AkkaHttpServer extends ServerImpl {
 
-  val config: ServerConfig = ServerConfigReader.config
+  val config: ServerConfig = Init.config
 
   implicit val system: ActorSystem = ActorSystem()
   import system.dispatcher

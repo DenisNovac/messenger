@@ -2,9 +2,18 @@ package app.model
 
 import scala.concurrent.duration.FiniteDuration
 
-case class ServerConfig(
+final case class ServerConfig(
     host: String,
     port: Int,
     server: String,
-    sessionTimeout: FiniteDuration
+    sessionTimeout: FiniteDuration,
+    db: DatabaseConfig
+)
+
+final case class DatabaseConfig(
+    host: String,
+    port: Int,
+    name: String,
+    user: String,
+    password: String
 )
