@@ -19,6 +19,9 @@ jobs:
           java-version: 13
       - name: Run tests
         run: sbt test
+      - name: Assembly  # with disabled tests
+        run: sbt 'set test in assembly := {}' assembly
+
 
   #build:
   #  name: build-master-job
