@@ -22,10 +22,11 @@ jobs:
       - name: Assembly  # with disabled tests
         run: sbt 'set test in assembly := {}' assembly
 
-
-  #build:
-  #  name: build-master-job
-  #  runs-on: ubuntu-latest
-  #  steps:
-  #    - name: build-master-step
-  #     uses: docker/build-push-action@v1.1.0
+      - name: build-master-container-step
+        uses: docker/build-push-action@v1.1.0
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          repository: docker.pkg.github.com/denisnovac/messenger
+          tag_with_ref: true
+          tag_with_sha: true
