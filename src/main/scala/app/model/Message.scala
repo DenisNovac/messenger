@@ -43,6 +43,9 @@ final case class NormalizedTextMessage(conversation: Long, timestamp: Long, text
 object NormalizedTextMessage {
   implicit val enc: Encoder[NormalizedTextMessage] = deriveEncoder[NormalizedTextMessage]
   implicit val dec: Decoder[NormalizedTextMessage] = deriveDecoder[NormalizedTextMessage]
+
+  def normalize(msg: IncomingTextMessage, author: Long): NormalizedTextMessage =
+    NormalizedTextMessage(msg.conversation, msg.timestamp, msg.text, author)
 }
 
 final case class NormalizedTextMessageVector(messages: Vector[NormalizedTextMessage])
@@ -50,9 +53,6 @@ final case class NormalizedTextMessageVector(messages: Vector[NormalizedTextMess
 object NormalizedTextMessageVector {
   implicit val enc: Encoder[NormalizedTextMessageVector] = deriveEncoder[NormalizedTextMessageVector]
   implicit val dec: Decoder[NormalizedTextMessageVector] = deriveDecoder[NormalizedTextMessageVector]
-
-  def normalize(msg: IncomingTextMessage, author: Long): NormalizedTextMessage =
-    NormalizedTextMessage(msg.conversation, msg.timestamp, msg.text, author)
 }
 
 final case class Conversations(userConversations: Vector[Conversation]) extends Message

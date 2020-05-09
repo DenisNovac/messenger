@@ -4,7 +4,7 @@ import app.api.services.AuthService
 import app.model.DatabaseAbstraction.Conversation
 import app.model.{DatabaseAbstraction, ErrorInfo, Forbidden, InternalServerError, NotFound, Unauthorized}
 import app.model._
-import app.model.NormalizedTextMessageVector.normalize
+import app.model.NormalizedTextMessage.normalize
 import cats.Monad
 import cats.syntax.either._
 import cats.syntax.applicative._
