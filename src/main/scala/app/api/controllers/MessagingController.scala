@@ -58,6 +58,7 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
         DatabaseAbstraction.getMessages
           .filter(m => conversations.map(_.id).contains(m.conversation)) // Messages from conversation of this user
           .filter(_.timestamp > s.timestamp)                             // And wanted timestamp
+          .sortWith((msg1, msg2) => msg1.timestamp < msg2.timestamp)
 
       NormalizedTextMessageVector(messagesSinceSync).asRight[StatusCode].pure[F]
 
