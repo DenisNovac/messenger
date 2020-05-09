@@ -3,7 +3,8 @@ package app.api.controllers
 import app.api.services.AuthService
 import app.model.DatabaseAbstraction.Conversation
 import app.model.{DatabaseAbstraction, ErrorInfo, Forbidden, InternalServerError, NotFound, Unauthorized}
-import app.model.Message.{normalize, AddToConversation, Conversations, IncomingTextMessage, NormTextMessageVector, Sync}
+import app.model._
+import app.model.NormalizedTextMessageVector.normalize
 import cats.Monad
 import cats.syntax.either._
 import cats.syntax.applicative._
@@ -46,7 +47,7 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
     * @param s Sync message
     * @return
     */
-  def sync(cookie: Option[String], s: Sync): F[Either[StatusCode, NormTextMessageVector]] =
+  def sync(cookie: Option[String], s: Sync): F[Either[StatusCode, NormalizedTextMessageVector]] =
     if (AuthService.isCookieValid(cookie)) {
 
       val (user, conversations) = DatabaseAbstraction.getUserAndConversations(cookie)
@@ -58,11 +59,11 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
           .filter(m => conversations.map(_.id).contains(m.conversation)) // Messages from conversation of this user
           .filter(_.timestamp > s.timestamp)                             // And wanted timestamp
 
-      NormTextMessageVector(messagesSinceSync).asRight[StatusCode].pure[F]
+      NormalizedTextMessageVector(messagesSinceSync).asRight[StatusCode].pure[F]
 
     } else {
       logger.error(s"Invalid cookie dropped: $cookie")
-      StatusCode.Unauthorized.asLeft[NormTextMessageVector].pure[F]
+      StatusCode.Unauthorized.asLeft[NormalizedTextMessageVector].pure[F]
     }
 
   /**

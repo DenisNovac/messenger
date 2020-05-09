@@ -4,7 +4,7 @@ import java.time.Instant
 import java.util.UUID
 
 import app.ServerConfigReader
-import app.model.Message.Authorize
+import app.model.Authorize
 import app.model.{DatabaseAbstraction, ServerConfig}
 import com.typesafe.scalalogging.LazyLogging
 import sttp.model.CookieValueWithMeta

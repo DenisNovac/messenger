@@ -1,12 +1,11 @@
 package app.api.endpoints
 
-import app.model.Message._
 import app.model._
 import sttp.model.StatusCode
 import sttp.tapir.json.circe.jsonBody
 import sttp.tapir.{auth, cookie, endpoint, oneOf, statusCode, statusMapping, Endpoint}
 
-object MessagingEndpoints extends JsonCodecs {
+object MessagingEndpoints {
 
   val send: Endpoint[(Option[String], IncomingTextMessage), ErrorInfo, StatusCode, Nothing] =
     endpoint.post
@@ -64,12 +63,12 @@ object MessagingEndpoints extends JsonCodecs {
         statusCode(StatusCode.Unauthorized).description("Cookie is invalid or timed out")
       )
 
-  val sync: Endpoint[(Option[String], Sync), StatusCode, NormTextMessageVector, Nothing] =
+  val sync: Endpoint[(Option[String], Sync), StatusCode, NormalizedTextMessageVector, Nothing] =
     endpoint.post
       .in("sync")
       .in(auth.apiKey(cookie[Option[String]]("sessionid")))
       .in(jsonBody[Sync])
-      .out(jsonBody[NormTextMessageVector])
+      .out(jsonBody[NormalizedTextMessageVector])
       .errorOut(statusCode)
       .tag("Messaging")
       .summary("Get all messages from specified time from server")

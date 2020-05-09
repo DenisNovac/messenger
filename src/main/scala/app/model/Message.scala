@@ -1,30 +1,63 @@
 package app.model
 
 import app.model.DatabaseAbstraction.Conversation
+import io.circe.{Decoder, Encoder}
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 
 trait Message
 
-object Message {
+final case class Authorize(id: Long, password: String) extends Message
 
-  case class Authorize(id: Long, password: String)
+object Authorize {
+  implicit val enc: Encoder[Authorize] = deriveEncoder[Authorize]
+  implicit val dec: Decoder[Authorize] = deriveDecoder[Authorize]
+}
 
-  case class AddToConversation(conversationId: Long, newUserId: Long)
+final case class AddToConversation(conversationId: Long, newUserId: Long) extends Message
 
-  case class Sync(timestamp: Long)
+object AddToConversation {
+  implicit val enc: Encoder[AddToConversation] = deriveEncoder[AddToConversation]
+  implicit val dec: Decoder[AddToConversation] = deriveDecoder[AddToConversation]
 
-  case class SyncConversations()
+}
 
-  /**
-    * Messages
-    * */
-  case class IncomingTextMessage(conversation: Long, timestamp: Long, text: String)
+final case class Sync(timestamp: Long) extends Message
 
-  case class NormalizedTextMessage(conversation: Long, timestamp: Long, text: String, author: Long)
+object Sync {
+  implicit val enc: Encoder[Sync] = deriveEncoder[Sync]
+  implicit val dec: Decoder[Sync] = deriveDecoder[Sync]
+}
 
-  case class NormTextMessageVector(messages: Vector[NormalizedTextMessage])
+final case class SyncConversations() extends Message
+
+final case class IncomingTextMessage(conversation: Long, timestamp: Long, text: String) extends Message
+
+object IncomingTextMessage {
+  implicit val enc: Encoder[IncomingTextMessage] = deriveEncoder[IncomingTextMessage]
+  implicit val dec: Decoder[IncomingTextMessage] = deriveDecoder[IncomingTextMessage]
+
+}
+
+final case class NormalizedTextMessage(conversation: Long, timestamp: Long, text: String, author: Long) extends Message
+
+object NormalizedTextMessage {
+  implicit val enc: Encoder[NormalizedTextMessage] = deriveEncoder[NormalizedTextMessage]
+  implicit val dec: Decoder[NormalizedTextMessage] = deriveDecoder[NormalizedTextMessage]
+}
+
+final case class NormalizedTextMessageVector(messages: Vector[NormalizedTextMessage])
+
+object NormalizedTextMessageVector {
+  implicit val enc: Encoder[NormalizedTextMessageVector] = deriveEncoder[NormalizedTextMessageVector]
+  implicit val dec: Decoder[NormalizedTextMessageVector] = deriveDecoder[NormalizedTextMessageVector]
 
   def normalize(msg: IncomingTextMessage, author: Long): NormalizedTextMessage =
     NormalizedTextMessage(msg.conversation, msg.timestamp, msg.text, author)
+}
 
-  case class Conversations(userConversations: Vector[Conversation])
+final case class Conversations(userConversations: Vector[Conversation]) extends Message
+
+object Conversations {
+  implicit val enc: Encoder[Conversations] = deriveEncoder[Conversations]
+  implicit val dec: Decoder[Conversations] = deriveDecoder[Conversations]
 }
