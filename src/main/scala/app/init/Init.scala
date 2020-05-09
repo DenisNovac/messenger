@@ -20,4 +20,6 @@ object Init {
   implicit val ec: ExecutionContext = global
   val postgres                      = new PostgresSession(config.db)
 
+  def stop() =
+    postgres.cancelInit()
 }

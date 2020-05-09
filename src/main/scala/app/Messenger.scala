@@ -35,6 +35,7 @@ object Messenger extends App with LazyLogging {
         case value if value.trim == "quit" =>
           logger.info("Shutting down by user's request...")
           server.stop()
+          Init.stop()
           break
 
         case _ =>

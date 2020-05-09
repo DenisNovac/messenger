@@ -3,7 +3,7 @@ package app.init
 import app.model.DatabaseConfig
 import doobie.Transactor
 import cats.Monad
-import cats.effect.{ContextShift, IO}
+import cats.effect.{CancelToken, ContextShift, IO, SyncIO}
 import cats.syntax.applicative._
 import cats.free.Free
 import com.typesafe.scalalogging.LazyLogging
@@ -31,20 +31,29 @@ class PostgresSession(config: DatabaseConfig)(implicit val ec: ExecutionContext)
 
   private val createUsers =
     sql"""
-         |CREATE TABLE users (
+         |CREATE TABLE IF NOT EXISTS users (
          |id SERIAL PRIMARY KEY,
          |name VARCHAR(30) NOT NULL,
          |password VARCHAR(30) NOT NULL
          |);
          |""".stripMargin
 
+  private val createSessions =
+    sql"""
+         |CREATE TABLE IF NOT EXISTS sessions (
+         |id UUID PRIMARY KEY,
+         |body json NOT NULL
+         |);
+         |""".stripMargin
+
   private val initTables = {
     for {
-      a <- createUsers.update.run
-    } yield a
+      _ <- createUsers.update.run
+      _ <- createSessions.update.run
+    } yield ()
   }.transact(transactor).attempt
 
-  private def initTablesWithRetry(retries: Int, waitSecs: Int): IO[Int] = initTables.flatMap {
+  private def initTablesWithRetry(retries: Int, waitSecs: Int): IO[Unit] = initTables.flatMap {
     case Left(error) if retries > 0 =>
       logger.error(
         s"Database error: ${error.getMessage}. Will retry in ${waitSecs} seconds. Retries left: ${retries - 1}"
@@ -59,6 +68,11 @@ class PostgresSession(config: DatabaseConfig)(implicit val ec: ExecutionContext)
       value.pure[IO]
   }
 
-  initTablesWithRetry(3, 20).unsafeRunSync
+  private val cancelableInit: CancelToken[IO] = initTablesWithRetry(3, 20).unsafeRunCancelable(r => IO())
 
+  /** Method to cancel initialization which was not completed yet */
+  def cancelInit(): Unit = {
+    logger.info("Aborting database initialization")
+    cancelableInit.unsafeRunSync()
+  }
 }
