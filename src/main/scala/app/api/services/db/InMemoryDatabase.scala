@@ -1,12 +1,7 @@
-package app.model
+package app.api.services.db
 
-import java.time.Instant
-
-import app.api.services.db.DatabaseService
+import app.model._
 import com.typesafe.scalalogging.LazyLogging
-import io.circe.{Decoder, Encoder}
-import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
-import sttp.model.CookieValueWithMeta
 
 /** In-memory structure for chat */
 object InMemoryDatabase extends DatabaseService with LazyLogging {
