@@ -26,16 +26,15 @@ object Messenger extends App with LazyLogging {
 
   println("Server is started. Enter 'quit` to stop server...")
 
-  import scala.util.control._
-  val loop = new Breaks
+  import scala.util.control.Breaks.{break, breakable}
 
-  loop.breakable {
+  breakable {
     while (true) {
       StdIn.readLine() match {
         case value if value.trim == "quit" =>
           logger.info("Shutting down by user's request...")
           server.stop()
-          loop.break
+          break
 
         case _ =>
           println("Enter 'quit` to stop server...")
