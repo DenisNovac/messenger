@@ -13,19 +13,29 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
       - name: Set up JDK 13
         uses: actions/setup-java@v1
         with:
           java-version: 13
+
       - name: Run tests
         run: sbt test
-      - name: Assembly  # with disabled tests
+
+      # SBT Assembly with disabled tests
+      - name: Assembly 
         run: sbt 'set test in assembly := {}' assembly
+
+      - name: Docker Login
+        uses: azure/docker-login@v1
+        with:
+          login-server: docker.pkg.github.com
+          username: $GITHUB_ACTOR
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: build-master-container-step
         uses: docker/build-push-action@v1.1.0
         with:
           repository: docker.pkg.github.com/denisnovac/messenger
-          repo-token: ${{ secrets.DOCKER_TOKEN }}
           tag_with_ref: true
           tag_with_sha: true
