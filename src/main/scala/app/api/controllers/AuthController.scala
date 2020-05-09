@@ -1,7 +1,7 @@
 package app.api.controllers
 
 import app.api.services.AuthService
-import app.model.Message.Authorize
+import app.model.Authorize
 import cats.Monad
 import cats.syntax.either._
 import cats.syntax.applicative._

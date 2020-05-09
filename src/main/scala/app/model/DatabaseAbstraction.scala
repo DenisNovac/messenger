@@ -2,8 +2,9 @@ package app.model
 
 import java.time.Instant
 
-import app.model.Message._
 import com.typesafe.scalalogging.LazyLogging
+import io.circe.{Decoder, Encoder}
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import sttp.model.CookieValueWithMeta
 
 /** In-memory structure for chat */
@@ -13,6 +14,11 @@ object DatabaseAbstraction extends LazyLogging {
     def prettyName: String = s"$name#$id" // name like Sam#111
   }
   case class Conversation(id: Long, name: String, admins: Vector[Long], participants: Vector[Long])
+
+  object Conversation {
+    implicit val enc: Encoder[Conversation] = deriveEncoder[Conversation]
+    implicit val dec: Decoder[Conversation] = deriveDecoder[Conversation]
+  }
 
   case class CookieBody(user: User, expires: Option[Instant], body: CookieValueWithMeta)
 
