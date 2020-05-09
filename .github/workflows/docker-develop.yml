@@ -1,10 +1,8 @@
-name: Build Master CI
+name: Build Develop CI
 
 on:
   push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+    branches: [ develop ]
 
 jobs:
 
@@ -26,20 +24,12 @@ jobs:
       - name: Assembly 
         run: sbt 'set test in assembly := {}' assembly
 
-      #- name: Docker Login
-      #  uses: azure/docker-login@v1
-      #  with:
-      #     login-server: docker.pkg.github.com
-      #     username: $GITHUB_ACTOR
-      #     password: ${{ secrets.GITHUB_TOKEN }}
-          
-      - name: build-master-container-step
+      - name: build-develop-container-step
         uses: docker/build-push-action@v1.1.0
         with:
           registry: docker.pkg.github.com
-          repository: denisnovac/messenger/master
+          repository: denisnovac/messenger/develop
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           add_git_labels: true
           tag_with_ref: true
-
