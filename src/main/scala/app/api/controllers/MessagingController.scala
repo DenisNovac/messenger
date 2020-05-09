@@ -3,7 +3,7 @@ package app.api.controllers
 import app.api.services.AuthService
 import app.model.DatabaseAbstraction.Conversation
 import app.model.{DatabaseAbstraction, ErrorInfo, Forbidden, InternalServerError, NotFound, Unauthorized}
-import app.model.Message.{AddToConversation, Conversations, IncomingTextMessage, NormTextMessageVector, Sync, normalize}
+import app.model.Message.{normalize, AddToConversation, Conversations, IncomingTextMessage, NormTextMessageVector, Sync}
 import cats.Monad
 import cats.syntax.either._
 import cats.syntax.applicative._
