@@ -4,7 +4,8 @@ import java.time.Instant
 import java.util.UUID
 
 import app.ServerConfigReader
-import app.model.{Authorize, CookieBody, InMemoryDatabase, ServerConfig}
+import app.api.services.db.InMemoryDatabase
+import app.model.{Authorize, CookieBody, ServerConfig}
 import com.typesafe.scalalogging.LazyLogging
 import sttp.model.CookieValueWithMeta
 import cats.syntax.option._
