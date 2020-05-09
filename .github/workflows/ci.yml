@@ -33,12 +33,13 @@ jobs:
       #     username: $GITHUB_ACTOR
       #     password: ${{ secrets.GITHUB_TOKEN }}
           
-
       - name: build-master-container-step
         uses: docker/build-push-action@v1.1.0
         with:
-          repository: docker.pkg.github.com/denisnovac/messenger
-          username: $GITHUB_ACTOR
+          registry: docker.pkg.github.com
+          repository: denisnovac/messenger/master
+          username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+          add_git_labels: true
           tag_with_ref: true
-          tag_with_sha: true
+
