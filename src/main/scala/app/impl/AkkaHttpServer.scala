@@ -8,10 +8,10 @@ import app.api.endpoints.OpenApiEndpoint
 import app.model.ServerConfig
 import app.api.controllers._
 import app.init.Init
+import cats.effect.{ContextShift, ExitCode, IO, Timer}
 
 import scala.concurrent.Future
 import cats.instances.future._
-import sttp.tapir.server.akkahttp._
 import sttp.tapir.swagger.akkahttp.SwaggerAkka
 
 /** Deprecated for now, no development */
@@ -20,7 +20,10 @@ class AkkaHttpServer extends ServerImpl {
   val config: ServerConfig = Init.config
 
   implicit val system: ActorSystem = ActorSystem()
+
   import system.dispatcher
+
+  implicit val contextShift: ContextShift[IO] = IO.contextShift(dispatcher)
 
   val utilService = new UtilController[Future]
   val msgService  = new MessagingController[Future]
@@ -37,6 +40,9 @@ class AkkaHttpServer extends ServerImpl {
 
   // Server startup
   val bindingFuture: Future[Http.ServerBinding] = Http().bindAndHandle(routes, config.host, config.port)
+
+  /** This is an trick to make cancelable IOApp with Akka's Future */
+  override val server: IO[ExitCode] = IO.never.map(_ => ExitCode.Success)
 
   logger.info(s"Started Akka Http server on ${config.host}:${config.port}")
 

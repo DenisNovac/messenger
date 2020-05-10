@@ -5,10 +5,9 @@ import app.api.controllers._
 import app.init.Init
 import app.model.ServerConfig
 
-import scala.concurrent.{ExecutionContext, Future}
-import cats.syntax.functor._
+import scala.concurrent.ExecutionContext
 import cats.syntax.semigroupk._
-import cats.effect.{CancelToken, ContextShift, ExitCode, IO, Timer}
+import cats.effect.{ContextShift, ExitCode, IO, Timer}
 import sttp.tapir.server.http4s._
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.syntax.all._
@@ -52,7 +51,7 @@ class Http4sServer extends ServerImpl {
 
   val routes = Router("/" -> concat).orNotFound
 
-  val server: IO[ExitCode] = BlazeServerBuilder[IO](ec)
+  override val server: IO[ExitCode] = BlazeServerBuilder[IO](ec)
     .bindHttp(config.port, config.host)
     .withHttpApp(routes)
     .serve
@@ -60,10 +59,8 @@ class Http4sServer extends ServerImpl {
     .drain
     .as(ExitCode.Success)
 
-  val cancelable: CancelToken[IO] = server.unsafeRunCancelable(r => println(s"Done: $r"))
-
   logger.info(s"Started Http4s server on ${config.host}:${config.port}")
 
-  override def stop(): Unit =
-    cancelable.unsafeRunSync()
+  /** In Http4s Server there is no need in stop method since server is IO[ExitCode] and IOApp knows how to close it */
+  override def stop(): Unit = ()
 }
