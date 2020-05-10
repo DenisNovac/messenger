@@ -17,6 +17,7 @@ import doobie.implicits._
 import doobie.util.fragment.Fragment
 import doobie.postgres.implicits._
 import doobie.util.log.LogHandler
+import doobie.util.transactor.Transactor.Aux
 import doobie.util.update.Update
 
 import scala.concurrent.ExecutionContext
@@ -33,7 +34,9 @@ class PostgresSession(config: DatabaseConfig)(implicit val ec: ExecutionContext)
 
   private val driver           = "org.postgresql.Driver"
   private val connectionString = s"jdbc:postgresql://${config.host}:${config.port}/${config.name}"
-  private val transactor       = Transactor.fromDriverManager[IO](driver, connectionString, config.user, config.password)
+
+  val transactor: Aux[IO, Unit] =
+    Transactor.fromDriverManager[IO](driver, connectionString, config.user, config.password)
 
   /** Database initialization will wait for database. For some time... */
 

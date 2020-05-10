@@ -10,10 +10,16 @@ import com.typesafe.scalalogging.LazyLogging
 import sttp.model.CookieValueWithMeta
 import cats.syntax.option._
 
+import doobie.implicits._
+import io.circe.syntax._
 import scala.concurrent.duration.FiniteDuration
 
-object AuthService extends LazyLogging {
+// for putting jsons in SQL-queries
+import app.model.PostgresJsonMapping._
+import doobie.postgres.implicits._
 
+object AuthService extends LazyLogging {
+  private val transactor            = Init.postgres.transactor
   val config: ServerConfig          = Init.config
   val cookieTimeout: FiniteDuration = config.sessionTimeout
 
@@ -22,13 +28,28 @@ object AuthService extends LazyLogging {
     InMemoryDatabase.users.get(authMsg.id) match {
 
       case Some(user) if authMsg.password == user.password =>
-        val id: String = UUID.randomUUID().toString // id is the value of cookie and database id
-        val expires    = getExpiration
+        val id: UUID = UUID.randomUUID // id is the value of cookie and database id
+        val expires  = getExpiration
         val cookie =
-          CookieValueWithMeta(value = id, expires = expires, None, None, None, secure = false, httpOnly = false, Map())
+          CookieValueWithMeta(
+            value = id.toString,
+            expires = expires,
+            None,
+            None,
+            None,
+            secure = false,
+            httpOnly = false,
+            Map()
+          )
 
         val cookieBody = CookieBody(user, expires, cookie)
-        InMemoryDatabase.putCookie(id, cookieBody)
+        InMemoryDatabase.putCookie(id.toString, cookieBody)
+
+        // TODO: only for tests, remove later
+        sql"""
+             |INSERT INTO sessions(id, body) VALUES ($id, ${cookieBody.asJson})
+             |""".stripMargin.update.run.transact(transactor).unsafeRunSync()
+
         cookie.some
 
       case _ => None
