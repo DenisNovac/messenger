@@ -4,7 +4,7 @@ import app.model._
 import com.typesafe.scalalogging.LazyLogging
 
 /** In-memory structure for chat */
-object InMemoryDatabase extends DatabaseService with LazyLogging {
+object InMemoryDatabase extends DatabaseService {
 
   private var conversationIdCounter = 0
 

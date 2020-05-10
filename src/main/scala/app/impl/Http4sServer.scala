@@ -15,11 +15,10 @@ import org.http4s.HttpRoutes
 import org.http4s.server.Router
 import sttp.tapir.swagger.http4s.SwaggerHttp4s
 
-class Http4sServer extends ServerImpl {
+class Http4sServer(implicit val ec: ExecutionContext) extends ServerImpl {
 
   val config: ServerConfig = Init.config
 
-  implicit val ec: ExecutionContext           = scala.concurrent.ExecutionContext.global
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
   implicit val timer: Timer[IO]               = IO.timer(ec)
 

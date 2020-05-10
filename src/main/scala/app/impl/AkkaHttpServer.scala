@@ -10,20 +10,18 @@ import app.api.controllers._
 import app.init.Init
 import cats.effect.{ContextShift, ExitCode, IO, Timer}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import cats.instances.future._
 import sttp.tapir.swagger.akkahttp.SwaggerAkka
 
 /** Deprecated for now, no development */
-class AkkaHttpServer extends ServerImpl {
+class AkkaHttpServer(implicit val ec: ExecutionContext) extends ServerImpl {
 
   val config: ServerConfig = Init.config
 
   implicit val system: ActorSystem = ActorSystem()
 
-  import system.dispatcher
-
-  implicit val contextShift: ContextShift[IO] = IO.contextShift(dispatcher)
+  implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
 
   val utilService = new UtilController[Future]
   val msgService  = new MessagingController[Future]

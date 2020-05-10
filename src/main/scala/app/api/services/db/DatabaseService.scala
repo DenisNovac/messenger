@@ -1,8 +1,9 @@
 package app.api.services.db
 
 import app.model._
+import com.typesafe.scalalogging.LazyLogging
 
-trait DatabaseService {
+trait DatabaseService extends LazyLogging {
 
   /** Get user by immutable ID */
   def getUserById(id: Long): Option[User]

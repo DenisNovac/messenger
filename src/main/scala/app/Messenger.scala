@@ -7,11 +7,12 @@ import cats.effect.ExitCase._
 import cats.effect.{ExitCode, IO, IOApp}
 import com.typesafe.scalalogging.LazyLogging
 
+import scala.concurrent.ExecutionContext
+
 object Messenger extends IOApp with LazyLogging {
 
-  logger.info("Messenger is starting...")
-
-  private val config = Init.config
+  private val config                        = Init.config
+  implicit private val ec: ExecutionContext = Init.ec
 
   logger.info(s"Application config: $config")
 
