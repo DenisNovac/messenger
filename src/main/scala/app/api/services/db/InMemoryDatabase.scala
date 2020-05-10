@@ -14,7 +14,7 @@ object InMemoryDatabase extends DatabaseService {
   }
 
   private var conversations: Vector[Conversation] =
-    Vector(Conversation(getNextConversationId, ConversationBody("Test Conversation", Vector(1), Vector(1, 2)))) // one test conversation
+    Vector(Conversation(getNextConversationId, ConversationBody("Test Conversation", Set(1), Set(), Set(1, 2)))) // one test conversation
 
   def updateConversation(id: Long, newConv: ConversationBody): Unit =
     conversations = conversations.filterNot(_.id == id) :+ Conversation(

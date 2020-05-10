@@ -1,15 +1,23 @@
 package app.init
 
-import app.model.DatabaseConfig
+import java.util.UUID
+
+import app.model.{Conversation, ConversationBody, DatabaseConfig, User}
 import doobie.Transactor
 import cats.Monad
 import cats.effect.{CancelToken, ContextShift, IO, SyncIO}
 import cats.syntax.applicative._
+import cats.syntax.traverse._
+import cats.instances.list._
 import cats.free.Free
 import com.typesafe.scalalogging.LazyLogging
 import doobie.free.connection
 import doobie.free.connection.ConnectionIO
 import doobie.implicits._
+import doobie.util.fragment.Fragment
+import doobie.postgres.implicits._
+import doobie.util.log.LogHandler
+import doobie.util.update.Update
 
 import scala.concurrent.ExecutionContext
 
@@ -29,7 +37,7 @@ class PostgresSession(config: DatabaseConfig)(implicit val ec: ExecutionContext)
 
   /** Database initialization will wait for database. For some time... */
 
-  private val createUsers =
+  private val users =
     sql"""
          |CREATE TABLE IF NOT EXISTS users (
          |id SERIAL PRIMARY KEY,
@@ -38,7 +46,7 @@ class PostgresSession(config: DatabaseConfig)(implicit val ec: ExecutionContext)
          |);
          |""".stripMargin
 
-  private val createSessions =
+  private val sessions =
     sql"""
          |CREATE TABLE IF NOT EXISTS sessions (
          |id UUID PRIMARY KEY,
@@ -46,10 +54,102 @@ class PostgresSession(config: DatabaseConfig)(implicit val ec: ExecutionContext)
          |);
          |""".stripMargin
 
+  private val conversations =
+    sql"""
+         |CREATE TABLE IF NOT EXISTS conversations (
+         |id UUID PRIMARY KEY,
+         |name VARCHAR(30) NOT NULL
+         |);
+         |""".stripMargin
+
+  private val conversationsAdmins =
+    sql"""
+         |CREATE TABLE IF NOT EXISTS conversationsAdmins (
+         |id UUID PRIMARY KEY,
+         |conv_id UUID REFERENCES conversations(id),
+         |user_id INTEGER REFERENCES users(id)
+         |);
+         |""".stripMargin
+
+  private val conversationsModerators =
+    sql"""
+         |CREATE TABLE IF NOT EXISTS conversationsModerators (
+         |id UUID PRIMARY KEY,
+         |conv_id UUID REFERENCES conversations(id),
+         |user_id INTEGER REFERENCES users(id)
+         |);
+         |""".stripMargin
+
+  private val conversationsUsers =
+    sql"""
+         |CREATE TABLE IF NOT EXISTS conversationsUsers (
+         |id UUID PRIMARY KEY,
+         |conv_id UUID REFERENCES conversations(id),
+         |user_id INTEGER REFERENCES users(id)
+         |);
+         |""".stripMargin
+
+  private val usersList = List(
+    User(1, "denis", "123"),
+    User(2, "filya", "123"),
+    User(3, "ivan", "123")
+  )
+
+  private val convsList = List(
+    ConversationBody("test", Set(1), Set(), Set(1, 2, 3)),
+    ConversationBody("test2", Set(3), Set(), Set(1, 2, 3)),
+    ConversationBody("test3", Set(2), Set(), Set(1, 2))
+  )
+
+  def insertUser(user: User) =
+    sql"""
+         |INSERT INTO users(id, name, password) VALUES (${user.id}, ${user.name}, ${user.password});
+         |""".stripMargin
+
+  /** Return a List of ConnectionIO. It should be transformed to ConnectionIO[List] to execute */
+  def insertConversation(conversation: ConversationBody): List[doobie.ConnectionIO[Int]] = {
+
+    def insertConversationRelation(relationName: String, convId: UUID, users: Set[Long]): doobie.ConnectionIO[Int] = {
+      val sql       = s"INSERT INTO $relationName(id, conv_id, user_id) VALUES (?, ?, ?)"
+      val withUuids = users.map(user => (UUID.randomUUID, convId, user)).toList
+      Update[(UUID, UUID, Long)](sql).updateMany(withUuids)
+    }
+
+    val uuid = UUID.randomUUID
+
+    List(
+      sql"""
+           |INSERT INTO conversations(id, name) VALUES ($uuid, ${conversation.name})
+           |""".stripMargin.update.run,
+      insertConversationRelation("conversationsAdmins", uuid, conversation.admins),
+      insertConversationRelation("conversationsModerators", uuid, conversation.mods),
+      insertConversationRelation("conversationsUsers", uuid, conversation.participants)
+    )
+
+  }
+
+  private val initUsers = {
+    for {
+      u <- usersList
+    } yield insertUser(u)
+  }.foldRight(Fragment.empty)((fr1, fr2) => fr1 ++ fr2)
+
+  private val initConversations = {
+    for {
+      c <- convsList
+    } yield insertConversation(c)
+  }.flatten.sequence
+
   private val initTables = {
     for {
-      _ <- createUsers.update.run
-      _ <- createSessions.update.run
+      _ <- users.update.run
+      _ <- sessions.update.run
+      _ <- conversations.update.run
+      _ <- conversationsAdmins.update.run
+      _ <- conversationsModerators.update.run
+      _ <- conversationsUsers.update.run
+      _ <- initUsers.update.run
+      _ <- initConversations
     } yield ()
   }.transact(transactor).attempt
 

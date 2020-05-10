@@ -117,10 +117,10 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
             InMemoryDatabase.putMessage(welcome)
 
             // New list of participants with new user
-            val newParticipantsList = conversation.body.participants :+ newUser.id
+            val newParticipantsList = conversation.body.participants + newUser.id
             InMemoryDatabase.updateConversation(
               add.conversationId,
-              ConversationBody(conversation.body.name, conversation.body.admins, newParticipantsList)
+              ConversationBody(conversation.body.name, conversation.body.admins, Set(), newParticipantsList)
             )
             StatusCode.Ok.asRight[ErrorInfo].pure[F]
           }

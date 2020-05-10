@@ -3,7 +3,7 @@ package app.model
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 
-final case class ConversationBody(name: String, admins: Vector[Long], participants: Vector[Long])
+final case class ConversationBody(name: String, admins: Set[Long], mods: Set[Long], participants: Set[Long])
 
 object ConversationBody {
   implicit val enc: Encoder[ConversationBody] = deriveEncoder[ConversationBody]
