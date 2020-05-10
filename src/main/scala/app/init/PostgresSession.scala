@@ -2,7 +2,7 @@ package app.init
 
 import java.util.UUID
 
-import app.model.{Conversation, ConversationBody, DatabaseConfig, User}
+import app.model.{Conversation, ConversationBody, DatabaseConfig, DatabaseTables, User}
 import doobie.Transactor
 import cats.Monad
 import cats.effect.{CancelToken, ContextShift, IO, SyncIO}
@@ -37,58 +37,6 @@ class PostgresSession(config: DatabaseConfig)(implicit val ec: ExecutionContext)
 
   /** Database initialization will wait for database. For some time... */
 
-  private val users =
-    sql"""
-         |CREATE TABLE IF NOT EXISTS users (
-         |id SERIAL PRIMARY KEY,
-         |name VARCHAR(30) NOT NULL,
-         |password VARCHAR(30) NOT NULL
-         |);
-         |""".stripMargin
-
-  private val sessions =
-    sql"""
-         |CREATE TABLE IF NOT EXISTS sessions (
-         |id UUID PRIMARY KEY,
-         |body json NOT NULL
-         |);
-         |""".stripMargin
-
-  private val conversations =
-    sql"""
-         |CREATE TABLE IF NOT EXISTS conversations (
-         |id UUID PRIMARY KEY,
-         |name VARCHAR(30) NOT NULL
-         |);
-         |""".stripMargin
-
-  private val conversationsAdmins =
-    sql"""
-         |CREATE TABLE IF NOT EXISTS conversationsAdmins (
-         |id UUID PRIMARY KEY,
-         |conv_id UUID REFERENCES conversations(id),
-         |user_id INTEGER REFERENCES users(id)
-         |);
-         |""".stripMargin
-
-  private val conversationsModerators =
-    sql"""
-         |CREATE TABLE IF NOT EXISTS conversationsModerators (
-         |id UUID PRIMARY KEY,
-         |conv_id UUID REFERENCES conversations(id),
-         |user_id INTEGER REFERENCES users(id)
-         |);
-         |""".stripMargin
-
-  private val conversationsUsers =
-    sql"""
-         |CREATE TABLE IF NOT EXISTS conversationsUsers (
-         |id UUID PRIMARY KEY,
-         |conv_id UUID REFERENCES conversations(id),
-         |user_id INTEGER REFERENCES users(id)
-         |);
-         |""".stripMargin
-
   private val usersList = List(
     User(1, "denis", "123"),
     User(2, "filya", "123"),
@@ -100,6 +48,11 @@ class PostgresSession(config: DatabaseConfig)(implicit val ec: ExecutionContext)
     ConversationBody("test2", Set(3), Set(), Set(1, 2, 3)),
     ConversationBody("test3", Set(2), Set(), Set(1, 2))
   )
+
+  def selectUserById(id: Long) =
+    sql"""
+         |SELECT * FROM users WHERE id = $id;
+         |""".stripMargin.query[User].to[List].transact(transactor)
 
   def insertUser(user: User) =
     sql"""
@@ -142,12 +95,7 @@ class PostgresSession(config: DatabaseConfig)(implicit val ec: ExecutionContext)
 
   private val initTables = {
     for {
-      _ <- users.update.run
-      _ <- sessions.update.run
-      _ <- conversations.update.run
-      _ <- conversationsAdmins.update.run
-      _ <- conversationsModerators.update.run
-      _ <- conversationsUsers.update.run
+      _ <- DatabaseTables.values.map(_.create).toList.sequence
       _ <- initUsers.update.run
       _ <- initConversations
     } yield ()
