@@ -17,10 +17,6 @@ import io.circe.syntax._
 
 import scala.concurrent.duration.FiniteDuration
 
-// for putting jsons in SQL-queries
-import app.model.PostgresJsonMapping._
-import doobie.postgres.implicits._
-
 object AuthService extends LazyLogging {
   private val transactor            = Init.postgres.transactor
   val config: ServerConfig          = Init.config
@@ -48,13 +44,6 @@ object AuthService extends LazyLogging {
         val cookieBody = Cookie(id, user.id, expires, cookie)
         InMemoryDatabase.putCookie(id.toString, cookieBody)
 
-        // TODO: only for tests, remove later
-        import doobie.implicits.legacy.instant._ // for Instant type
-        import app.model.Cookie._                // for Cookie Write
-
-        val sql = "INSERT INTO sessions(id, userid, expires, body) VALUES (?, ?, ?, ?)"
-        Update[Cookie](sql).run(Cookie(id, user.id, expires, cookie)).transact(transactor).unsafeRunSync()
-
         cookie.some
 
       case _ => None
@@ -64,20 +53,6 @@ object AuthService extends LazyLogging {
   def isCookieValid(cookie: Option[String]): Boolean = {
     val id = cookie.getOrElse("")
 
-    val c = sql"SELECT * FROM sessions WHERE id = ${UUID.fromString(id)}"
-      .query[Cookie]
-      .unique
-      .transact(transactor)
-      .unsafeRunSync()
-
-    logger.info(s"${c}")
-
-    /*cki match {
-      case x :: Nil =>
-        isNotExpired(x.expires) &&                  // cookie is not expired
-          InMemoryDatabase.users.contains(x.userid) // cookie belongs to real user
-      case _ => false
-    }*/
     InMemoryDatabase.getCookie(id) match {
       case Some(value) =>
         isNotExpired(value.expires) &&                  // cookie is not expired
