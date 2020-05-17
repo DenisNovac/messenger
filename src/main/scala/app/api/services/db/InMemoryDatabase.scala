@@ -47,12 +47,12 @@ object InMemoryDatabase extends DatabaseService {
   }
 
   /** Issued cookies from authorization */
-  private var sessions: Map[String, CookieBody] = Map.empty
+  private var sessions: Map[String, Cookie] = Map.empty
 
-  def putCookie(id: String, body: CookieBody): Unit =
+  def putCookie(id: String, body: Cookie): Unit =
     sessions += id -> body
 
-  def getCookie(id: String): Option[CookieBody] =
+  def getCookie(id: String): Option[Cookie] =
     sessions.get(id)
 
   /**

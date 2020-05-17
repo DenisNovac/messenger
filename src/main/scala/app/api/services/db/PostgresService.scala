@@ -1,5 +1,5 @@
 package app.api.services.db
-import app.model.{Conversation, ConversationBody, CookieBody, User}
+import app.model.{Conversation, ConversationBody, Cookie, User}
 import app.init.PostgresSession
 import cats.effect.IO
 import doobie.implicits._
@@ -37,7 +37,7 @@ class PostgresService(session: PostgresSession) {
          |INSERT INTO sessions(id, body) VALUES ($id, ${body.asJson})
          |""".stripMargin.update.run.transact(transactor)*/
 
-  def getCookie(id: String): Option[CookieBody] = ???
+  def getCookie(id: String): Option[Cookie] = ???
 
   def updateConversation(id: Long, newConv: ConversationBody): Unit = ???
 

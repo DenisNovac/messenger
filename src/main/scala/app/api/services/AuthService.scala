@@ -5,12 +5,13 @@ import java.util.UUID
 
 import app.api.services.db.InMemoryDatabase
 import app.init.Init
-import app.model.{Authorize, CookieBody, ServerConfig}
+import app.model.{Authorize, Cookie, ServerConfig}
 import com.typesafe.scalalogging.LazyLogging
 import sttp.model.CookieValueWithMeta
 import cats.syntax.option._
 import doobie.implicits._
-import doobie.util.update.Update
+import doobie.util.Read
+import io.circe.Json
 import io.circe.syntax._
 
 import scala.concurrent.duration.FiniteDuration
@@ -43,13 +44,14 @@ object AuthService extends LazyLogging {
             Map()
           )
 
-        val cookieBody = CookieBody(user.id, expires, cookie)
+        val cookieBody = Cookie(id, user.id, expires, cookie)
         InMemoryDatabase.putCookie(id.toString, cookieBody)
 
         // TODO: only for tests, remove later
         import doobie.implicits.legacy.instant._ // for Instant type
+        import app.model.Cookie._                // for CookieValueWithMeta asJson
         sql"""
-             |INSERT INTO sessions(id, userid, expires, body) VALUES ($id, ${user.id}, $expires, ${cookieBody.asJson})
+             |INSERT INTO sessions(id, userid, expires, body) VALUES ($id, ${user.id}, $expires, ${cookie.asJson})
              |""".stripMargin.update.run.transact(transactor).unsafeRunSync()
 
         cookie.some
@@ -61,6 +63,37 @@ object AuthService extends LazyLogging {
   def isCookieValid(cookie: Option[String]): Boolean = {
     val id = cookie.getOrElse("")
 
+
+
+    //final class Cookie(id: UUID,userid: Long,expires: Option[Instant],body: CookieValueWithMeta)
+    // extends AuthenticationData
+    import doobie.implicits.legacy.instant._ // for Instant type
+    import app.model.Cookie._                // for CookieValueWithMeta asJson
+
+    implicit val cookieGet: Read[Cookie] =
+      Read[(UUID, Long, Option[Instant], Json)]
+        .map {
+          case (uuid, l, maybeInstant, metaJson) =>
+            metaJson.as[CookieValueWithMeta] match {
+              case Right(meta) => Cookie(uuid, l, maybeInstant, meta)
+            }
+
+        }
+
+    val c = sql"SELECT * FROM sessions WHERE id = ${UUID.fromString(id)}"
+      .query[Cookie]
+      .to[List]
+      .transact(transactor)
+      .unsafeRunSync()
+
+    logger.info(s"${c.head}")
+
+    /*cki match {
+      case x :: Nil =>
+        isNotExpired(x.expires) &&                  // cookie is not expired
+          InMemoryDatabase.users.contains(x.userid) // cookie belongs to real user
+      case _ => false
+    }*/
     InMemoryDatabase.getCookie(id) match {
       case Some(value) =>
         isNotExpired(value.expires) &&                  // cookie is not expired

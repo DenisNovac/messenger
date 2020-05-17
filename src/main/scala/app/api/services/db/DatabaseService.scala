@@ -15,9 +15,9 @@ trait DatabaseService extends LazyLogging {
 
   def getUserAndConversations(cookie: Option[String]): (Long, Vector[Conversation])
 
-  def putCookie(id: String, body: CookieBody): Unit
+  def putCookie(id: String, body: Cookie): Unit
 
-  def getCookie(id: String): Option[CookieBody]
+  def getCookie(id: String): Option[Cookie]
 
   def updateConversation(id: Long, newConv: ConversationBody): Unit
 

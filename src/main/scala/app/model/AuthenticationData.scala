@@ -19,13 +19,16 @@ object User {
   implicit val dec: Decoder[User] = deriveDecoder[User]
 }
 
-final case class CookieBody(userid: Long, expires: Option[Instant], body: CookieValueWithMeta)
+final case class Cookie(id: UUID, userid: Long, expires: Option[Instant], body: CookieValueWithMeta)
     extends AuthenticationData
 
-object CookieBody {
+
+object Cookie {
   implicit val encVal: Encoder[CookieValueWithMeta] = deriveEncoder[CookieValueWithMeta]
   implicit val decVal: Decoder[CookieValueWithMeta] = deriveDecoder[CookieValueWithMeta]
 
-  implicit val enc: Encoder[CookieBody] = deriveEncoder[CookieBody]
-  implicit val dec: Decoder[CookieBody] = deriveDecoder[CookieBody]
+  implicit val enc: Encoder[Cookie] = deriveEncoder[Cookie]
+  implicit val dec: Decoder[Cookie] = deriveDecoder[Cookie]
 }
+
+
