@@ -6,18 +6,19 @@ import app.init.PostgresSession
 import cats.effect.IO
 import doobie.implicits._
 import doobie.postgres.implicits._
+import doobie.util.log.LogHandler
 import doobie.util.update.Update
 import io.circe.syntax._
 
 object PostgresService {
 
+  implicit val lh: LogHandler = LogHandler.jdkLogHandler
+
   import app.init.Init.postgres.transactor
 
   /** Get user by immutable ID */
   def getUserById(id: Long): IO[User] =
-    sql"""
-         |SELECT FROM users WHERE id = $id
-         |""".stripMargin.query[User].unique.transact(transactor)
+    sql"SELECT FROM users WHERE id = $id".stripMargin.query[User].unique.transact(transactor)
 
   /** Get user by mutable login (which can be changed but can not be used twice in server) */
   def getUserByEmail(id: Long): Option[User] = ???
