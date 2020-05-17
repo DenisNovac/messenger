@@ -1,7 +1,9 @@
 package app.model
 
 import java.time.Instant
+import java.util.UUID
 
+import doobie.util.Put
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import sttp.model.CookieValueWithMeta
@@ -17,7 +19,8 @@ object User {
   implicit val dec: Decoder[User] = deriveDecoder[User]
 }
 
-final case class CookieBody(user: User, expires: Option[Instant], body: CookieValueWithMeta) extends AuthenticationData
+final case class CookieBody(userid: Long, expires: Option[Instant], body: CookieValueWithMeta)
+    extends AuthenticationData
 
 object CookieBody {
   implicit val encVal: Encoder[CookieValueWithMeta] = deriveEncoder[CookieValueWithMeta]

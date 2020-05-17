@@ -9,9 +9,10 @@ import app.model.{Authorize, CookieBody, ServerConfig}
 import com.typesafe.scalalogging.LazyLogging
 import sttp.model.CookieValueWithMeta
 import cats.syntax.option._
-
 import doobie.implicits._
+import doobie.util.update.Update
 import io.circe.syntax._
+
 import scala.concurrent.duration.FiniteDuration
 
 // for putting jsons in SQL-queries
@@ -42,12 +43,13 @@ object AuthService extends LazyLogging {
             Map()
           )
 
-        val cookieBody = CookieBody(user, expires, cookie)
+        val cookieBody = CookieBody(user.id, expires, cookie)
         InMemoryDatabase.putCookie(id.toString, cookieBody)
 
         // TODO: only for tests, remove later
+        import doobie.implicits.legacy.instant._ // for Instant type
         sql"""
-             |INSERT INTO sessions(id, body) VALUES ($id, ${cookieBody.asJson})
+             |INSERT INTO sessions(id, userid, expires, body) VALUES ($id, ${user.id}, $expires, ${cookieBody.asJson})
              |""".stripMargin.update.run.transact(transactor).unsafeRunSync()
 
         cookie.some
@@ -61,8 +63,8 @@ object AuthService extends LazyLogging {
 
     InMemoryDatabase.getCookie(id) match {
       case Some(value) =>
-        isNotExpired(value.expires) &&                   // cookie is not expired
-          InMemoryDatabase.users.contains(value.user.id) // cookie belongs to real user
+        isNotExpired(value.expires) &&                  // cookie is not expired
+          InMemoryDatabase.users.contains(value.userid) // cookie belongs to real user
       case None => false
     }
 

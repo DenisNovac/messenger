@@ -7,6 +7,7 @@ import doobie.util.fragment.Fragment
 import doobie.postgres.implicits._
 import doobie.util.log.LogHandler
 import doobie.util.update.Update
+import io.circe.syntax._
 
 class PostgresService(session: PostgresSession) {
 
@@ -31,7 +32,10 @@ class PostgresService(session: PostgresSession) {
                  |SELECT FROM sessions WHERE id = $c
                  |""".stripMargin
 
-  def putCookie(id: String, body: CookieBody): Unit = ???
+  /*def putCookie(id: String, body: CookieBody): IO[Int] =
+    sql"""
+         |INSERT INTO sessions(id, body) VALUES ($id, ${body.asJson})
+         |""".stripMargin.update.run.transact(transactor)*/
 
   def getCookie(id: String): Option[CookieBody] = ???
 

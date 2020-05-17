@@ -25,12 +25,15 @@ object DatabaseTables extends Enum[Table] {
            |""".stripMargin
   }
 
+  //id: UUID, user: Long, expires: Option[Instant], body: CookieValueWithMeta
   case object SessionsTable extends Table {
 
     override def sql: Fragment =
       sql"""
            |CREATE TABLE IF NOT EXISTS sessions (
            |id UUID PRIMARY KEY,
+           |userid BIGINT NOT NULL,
+           |expires TIMESTAMPTZ,
            |body json NOT NULL
            |);
            |""".stripMargin

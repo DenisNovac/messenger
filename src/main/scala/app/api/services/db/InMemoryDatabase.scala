@@ -59,12 +59,12 @@ object InMemoryDatabase extends DatabaseService {
     * Util method which gives user and his conversations from cookie.
     * It is useful since cookie is in every request and there is no usernames after authorization
     * */
-  override def getUserAndConversations(cookie: Option[String]): (User, Vector[Conversation]) = {
-    val user: User = InMemoryDatabase.getCookie(cookie.get).get.user
+  override def getUserAndConversations(cookie: Option[String]): (Long, Vector[Conversation]) = {
+    val userid: Long = InMemoryDatabase.getCookie(cookie.get).get.userid
     val userConversations: Vector[Conversation] =
-      InMemoryDatabase.getUserConversations.filter(_.body.participants.contains(user.id))
+      InMemoryDatabase.getUserConversations.filter(_.body.participants.contains(userid))
 
-    (user, userConversations)
+    (userid, userConversations)
   }
 
   override def getUserByEmail(id: Long): Option[User]          = ???

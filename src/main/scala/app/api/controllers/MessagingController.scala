@@ -26,10 +26,10 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
 
       // check if this messages is for suitable conversation
       if (conversations.map(_.id).contains(msg.conversation)) {
-        InMemoryDatabase.putMessage(normalize(msg, user.id))
+        InMemoryDatabase.putMessage(normalize(msg, user))
         StatusCode.Ok.asRight[ErrorInfo].pure[F]
       } else {
-        logger.error(s"Not found conversation ${msg.conversation} for user ${user.id}")
+        logger.error(s"Not found conversation ${msg.conversation} for user ${user}")
         val r: ErrorInfo = NotFound("Conversation not found")
         r.asLeft[StatusCode].pure[F]
       }
@@ -52,7 +52,7 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
 
       val (user, conversations) = InMemoryDatabase.getUserAndConversations(cookie)
 
-      logger.info(s"Sync request from user ${user.id}: $s")
+      logger.info(s"Sync request from user ${user}: $s")
 
       val messagesSinceSync =
         InMemoryDatabase.getMessages
@@ -97,21 +97,21 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
       ) match {
 
         /** Conversation (only one) and user exists, performed by admin of conversation */
-        case (conversation :: Nil, Some(newUser)) if conversation.body.admins.contains(maybeAdmin.id) =>
+        case (conversation :: Nil, Some(newUser)) if conversation.body.admins.contains(maybeAdmin) =>
           if (conversation.body.participants.contains(newUser.id)) {
             StatusCode.Ok.asRight[ErrorInfo].pure[F] // just OK without welcome message, user is already here
           } else {
             logger.info(
-              s"User ${maybeAdmin.prettyName} adds user ${newUser.prettyName} to conversation ${add.conversationId}"
+              s"User ${maybeAdmin} adds user ${newUser.prettyName} to conversation ${add.conversationId}"
             )
 
             val welcome = normalize(
               IncomingTextMessage(
                 add.conversationId,
                 1,
-                s"${maybeAdmin.prettyName} adds user ${newUser.prettyName} to this conversation"
+                s"${maybeAdmin} adds user ${newUser.prettyName} to this conversation"
               ),
-              maybeAdmin.id
+              maybeAdmin
             )
 
             InMemoryDatabase.putMessage(welcome)
@@ -128,7 +128,7 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
         /** User is not an admin */
         case (conversation :: Nil, Some(newUser)) =>
           logger.error(
-            s"${maybeAdmin.prettyName} tried to add user ${add.newUserId} to conversation ${add.conversationId} without privileges"
+            s"${maybeAdmin} tried to add user ${add.newUserId} to conversation ${add.conversationId} without privileges"
           )
           val r: ErrorInfo = Forbidden("No privileges to add users in this conversation")
           r.asLeft[StatusCode].pure[F]
@@ -136,7 +136,7 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
         /** No such conversation */
         case (Nil, _) =>
           logger.error(
-            s"User ${maybeAdmin.id} tried to add user ${add.newUserId} to not existing conversation ${add.conversationId}"
+            s"User ${maybeAdmin} tried to add user ${add.newUserId} to not existing conversation ${add.conversationId}"
           )
           val r: ErrorInfo = NotFound("Conversation not found")
           r.asLeft[StatusCode].pure[F]
@@ -144,7 +144,7 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
         /** No such user */
         case (_, None) =>
           logger.info(
-            s"${maybeAdmin.prettyName} tried to add non-existing user ${add.newUserId} to conversation ${add.conversationId}"
+            s"${maybeAdmin} tried to add non-existing user ${add.newUserId} to conversation ${add.conversationId}"
           )
           val r: ErrorInfo = NotFound("User not found")
           r.asLeft[StatusCode].pure[F]
