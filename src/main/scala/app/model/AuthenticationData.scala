@@ -3,9 +3,15 @@ package app.model
 import java.time.Instant
 import java.util.UUID
 
-import doobie.util.Put
-import io.circe.{Decoder, Encoder}
+import doobie.util.{Read, Write}
+import doobie.implicits.legacy.instant._
+import app.model.PostgresJsonMapping._
+import doobie.implicits._
+import doobie.postgres.implicits._
+
+import io.circe.{Decoder, Encoder, Json}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import io.circe.syntax._
 import sttp.model.CookieValueWithMeta
 
 trait AuthenticationData
@@ -29,6 +35,19 @@ object Cookie {
 
   implicit val enc: Encoder[Cookie] = deriveEncoder[Cookie]
   implicit val dec: Decoder[Cookie] = deriveDecoder[Cookie]
+
+  implicit val cookieGet: Read[Cookie] =
+    Read[(UUID, Long, Option[Instant], Json)]
+      .map {
+        case (uuid, l, maybeInstant, metaJson) =>
+          metaJson.as[CookieValueWithMeta] match {
+            case Right(meta) => Cookie(uuid, l, maybeInstant, meta)
+          }
+
+      }
+
+  implicit val cookieWrite: Write[Cookie] =
+    Write[(UUID, Long, Option[Instant], Json)].contramap(c => (c.id, c.userid, c.expires, c.body.asJson))
 }
 
 

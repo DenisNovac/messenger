@@ -11,6 +11,7 @@ import sttp.model.CookieValueWithMeta
 import cats.syntax.option._
 import doobie.implicits._
 import doobie.util.Read
+import doobie.util.update.Update
 import io.circe.Json
 import io.circe.syntax._
 
@@ -49,10 +50,10 @@ object AuthService extends LazyLogging {
 
         // TODO: only for tests, remove later
         import doobie.implicits.legacy.instant._ // for Instant type
-        import app.model.Cookie._                // for CookieValueWithMeta asJson
-        sql"""
-             |INSERT INTO sessions(id, userid, expires, body) VALUES ($id, ${user.id}, $expires, ${cookie.asJson})
-             |""".stripMargin.update.run.transact(transactor).unsafeRunSync()
+        import app.model.Cookie._                // for Cookie Write
+
+        val sql = "INSERT INTO sessions(id, userid, expires, body) VALUES (?, ?, ?, ?)"
+        Update[Cookie](sql).run(Cookie(id, user.id, expires, cookie)).transact(transactor).unsafeRunSync()
 
         cookie.some
 
@@ -62,23 +63,6 @@ object AuthService extends LazyLogging {
   /** Cookie must be from the list, must not be expired and must be issued to real user */
   def isCookieValid(cookie: Option[String]): Boolean = {
     val id = cookie.getOrElse("")
-
-
-
-    //final class Cookie(id: UUID,userid: Long,expires: Option[Instant],body: CookieValueWithMeta)
-    // extends AuthenticationData
-    import doobie.implicits.legacy.instant._ // for Instant type
-    import app.model.Cookie._                // for CookieValueWithMeta asJson
-
-    implicit val cookieGet: Read[Cookie] =
-      Read[(UUID, Long, Option[Instant], Json)]
-        .map {
-          case (uuid, l, maybeInstant, metaJson) =>
-            metaJson.as[CookieValueWithMeta] match {
-              case Right(meta) => Cookie(uuid, l, maybeInstant, meta)
-            }
-
-        }
 
     val c = sql"SELECT * FROM sessions WHERE id = ${UUID.fromString(id)}"
       .query[Cookie]
