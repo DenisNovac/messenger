@@ -47,7 +47,7 @@ object InMemoryDatabase {
   }
 
   /** Issued cookies from authorization */
- /* private var sessions: Map[String, Cookie] = Map.empty
+  /* private var sessions: Map[String, Cookie] = Map.empty
 
   def putCookie(id: String, body: Cookie): Unit =
     sessions += id -> body

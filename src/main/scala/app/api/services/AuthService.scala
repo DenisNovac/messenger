@@ -26,31 +26,25 @@ object AuthService extends LazyLogging {
   val cookieTimeout: FiniteDuration = config.sessionTimeout
 
   /** Checks user-password pair and issues and cookie if user exist */
-  def authorize(authMsg: Authorize): Option[CookieValueWithMeta] =
-    InMemoryDatabase.users.get(authMsg.id) match {
+  def authorize(authMsg: Authorize): IO[CookieValueWithMeta] =
+    for {
+      user        <- PostgresService.getUserById(authMsg.id)
+      generatedId = UUID.randomUUID
+      expires     = getExpiration
+      cookieMeta = CookieValueWithMeta(
+        value = generatedId.toString,
+        expires = expires,
+        None,
+        None,
+        None,
+        secure = false,
+        httpOnly = false,
+        Map()
+      )
+      cookie = Cookie(generatedId, user.id, expires, cookieMeta)
+      _      <- PostgresService.putCookie(cookie)
 
-      case Some(user) if authMsg.password == user.password =>
-        val id: UUID = UUID.randomUUID // id is the value of cookie and database id
-        val expires  = getExpiration
-        val cookieMeta =
-          CookieValueWithMeta(
-            value = id.toString,
-            expires = expires,
-            None,
-            None,
-            None,
-            secure = false,
-            httpOnly = false,
-            Map()
-          )
-
-        val cookie = Cookie(id, user.id, expires, cookieMeta)
-        PostgresService.putCookie(cookie).unsafeRunSync
-
-        cookieMeta.some
-
-      case _ => None
-    }
+    } yield cookieMeta
 
   /** Cookie must be from the list, must not be expired and must be issued to real user */
   def isCookieValid(cookie: Option[String]): IO[Boolean] = {
