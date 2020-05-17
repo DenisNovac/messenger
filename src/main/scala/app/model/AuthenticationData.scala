@@ -28,7 +28,6 @@ object User {
 final case class Cookie(id: UUID, userid: Long, expires: Option[Instant], body: CookieValueWithMeta)
     extends AuthenticationData
 
-
 object Cookie {
   implicit val encVal: Encoder[CookieValueWithMeta] = deriveEncoder[CookieValueWithMeta]
   implicit val decVal: Decoder[CookieValueWithMeta] = deriveDecoder[CookieValueWithMeta]
@@ -49,5 +48,3 @@ object Cookie {
   implicit val cookieWrite: Write[Cookie] =
     Write[(UUID, Long, Option[Instant], Json)].contramap(c => (c.id, c.userid, c.expires, c.body.asJson))
 }
-
-

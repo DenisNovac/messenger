@@ -66,11 +66,11 @@ object AuthService extends LazyLogging {
 
     val c = sql"SELECT * FROM sessions WHERE id = ${UUID.fromString(id)}"
       .query[Cookie]
-      .to[List]
+      .unique
       .transact(transactor)
       .unsafeRunSync()
 
-    logger.info(s"${c.head}")
+    logger.info(s"${c}")
 
     /*cki match {
       case x :: Nil =>
