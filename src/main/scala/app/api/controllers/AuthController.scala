@@ -23,7 +23,7 @@ class AuthController[F[_]: Monad] extends LazyLogging {
 
   /** Validate cookie */
   def testAuth(cookie: Option[String]): F[Either[StatusCode, StatusCode]] =
-    if (AuthService.isCookieValid(cookie)) {
+    if (AuthService.isCookieValid(cookie).unsafeRunSync) {
       StatusCode.Ok.asRight[StatusCode].pure[F]
     } else {
       StatusCode.Unauthorized.asLeft[StatusCode].pure[F]

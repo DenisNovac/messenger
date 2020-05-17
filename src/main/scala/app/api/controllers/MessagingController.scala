@@ -20,7 +20,7 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
     * @return
     */
   def send(cookie: Option[String], msg: IncomingTextMessage): F[Either[ErrorInfo, StatusCode]] =
-    if (AuthService.isCookieValid(cookie)) {
+    if (AuthService.isCookieValid(cookie).unsafeRunSync) {
 
       val (user, conversations) = InMemoryDatabase.getUserAndConversations(cookie)
 
@@ -48,7 +48,7 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
     * @return
     */
   def sync(cookie: Option[String], s: Sync): F[Either[StatusCode, NormalizedTextMessageVector]] =
-    if (AuthService.isCookieValid(cookie)) {
+    if (AuthService.isCookieValid(cookie).unsafeRunSync) {
 
       val (user, conversations) = InMemoryDatabase.getUserAndConversations(cookie)
 
@@ -71,7 +71,7 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
     * List of user's active conversations
     * */
   def conversationsList(cookie: Option[String]): F[Either[StatusCode, Conversations]] =
-    if (AuthService.isCookieValid(cookie)) {
+    if (AuthService.isCookieValid(cookie).unsafeRunSync) {
       val (user, conversations) = InMemoryDatabase.getUserAndConversations(cookie)
 
       Conversations(conversations).asRight[StatusCode].pure[F]
@@ -87,7 +87,7 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
     * @return
     */
   def addToConversation(cookie: Option[String], add: AddToConversation): F[Either[ErrorInfo, StatusCode]] =
-    if (AuthService.isCookieValid(cookie)) {
+    if (AuthService.isCookieValid(cookie).unsafeRunSync) {
 
       val (maybeAdmin, conversations) = InMemoryDatabase.getUserAndConversations(cookie)
 

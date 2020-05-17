@@ -4,7 +4,7 @@ import app.model._
 import com.typesafe.scalalogging.LazyLogging
 
 /** In-memory structure for chat */
-object InMemoryDatabase extends DatabaseService {
+object InMemoryDatabase {
 
   private var conversationIdCounter = 0
 
@@ -22,7 +22,7 @@ object InMemoryDatabase extends DatabaseService {
       newConv
     )
 
-  override def getUserConversations: Vector[Conversation] = {
+  def getUserConversations: Vector[Conversation] = {
     val c = conversations
     c
   }
@@ -47,27 +47,27 @@ object InMemoryDatabase extends DatabaseService {
   }
 
   /** Issued cookies from authorization */
-  private var sessions: Map[String, Cookie] = Map.empty
+ /* private var sessions: Map[String, Cookie] = Map.empty
 
   def putCookie(id: String, body: Cookie): Unit =
     sessions += id -> body
 
   def getCookie(id: String): Option[Cookie] =
-    sessions.get(id)
+    sessions.get(id)*/
 
   /**
     * Util method which gives user and his conversations from cookie.
     * It is useful since cookie is in every request and there is no usernames after authorization
     * */
-  override def getUserAndConversations(cookie: Option[String]): (Long, Vector[Conversation]) = {
-    val userid: Long = InMemoryDatabase.getCookie(cookie.get).get.userid
+  def getUserAndConversations(cookie: Option[String]): (Long, Vector[Conversation]) = {
+    val userid: Long = PostgresService.getCookie(cookie.get).unsafeRunSync.userid
     val userConversations: Vector[Conversation] =
       InMemoryDatabase.getUserConversations.filter(_.body.participants.contains(userid))
 
     (userid, userConversations)
   }
 
-  override def getUserByEmail(id: Long): Option[User]          = ???
+  /*override def getUserByEmail(id: Long): Option[User]          = ???
   override def createConversation(newConv: Conversation): Unit = ???
-  override def removeConversation(id: Long): Unit              = ???
+  override def removeConversation(id: Long): Unit              = ???*/
 }

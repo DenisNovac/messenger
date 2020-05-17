@@ -9,9 +9,9 @@ import doobie.postgres.implicits._
 import doobie.util.update.Update
 import io.circe.syntax._
 
-class PostgresService(session: PostgresSession) {
+object PostgresService {
 
-  import session.transactor
+  import app.init.Init.postgres.transactor
 
   /** Get user by immutable ID */
   def getUserById(id: Long): IO[User] =
