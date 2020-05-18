@@ -21,25 +21,17 @@ object MessagingEndpoints {
       .tag("Messaging")
       .summary("Send message to some conversation")
 
-  val addToConversation: Endpoint[(Option[String], AddToConversation), ErrorInfo, StatusCode, Nothing] =
+  val addToConversation: Endpoint[(Option[String], AddToConversation), StatusCode, StatusCode, Nothing] =
     endpoint.post
       .in("addToConversation")
       .in(auth.apiKey(cookie[Option[String]]("sessionid")))
       .in(jsonBody[AddToConversation])
       .out(statusCode)
       .errorOut(
-        oneOf(
-          statusMapping(StatusCode.NotFound, jsonBody[NotFound].description("User or Conversation was not found")),
-          statusMapping(
-            StatusCode.Unauthorized,
-            jsonBody[Unauthorized].description("Cookie timed out or does not exists")
-          ),
-          statusMapping(
-            StatusCode.InternalServerError,
-            jsonBody[InternalServerError].description("More than one conversation with such id")
-          ),
-          statusMapping(StatusCode.Forbidden, jsonBody[Forbidden].description("No privileges for this conversation"))
-        )
+        statusCode
+          .description(StatusCode.NotFound, "User or conversation for adding not found")
+          .description(StatusCode.Forbidden, "User is not an admin of conversation")
+          .description(StatusCode.Unauthorized, "User not found or cookie is invalid")
       )
       .tag("Messaging")
       .summary("Add user to conversation where admin")
@@ -54,9 +46,8 @@ object MessagingEndpoints {
       .out(jsonBody[Conversations])
       .tag("Messaging")
       .summary("List of user's active conversations")
-      .errorOut(statusCode)
       .errorOut(
-        statusCode(StatusCode.Unauthorized).description("Cookie is invalid or timed out")
+        statusCode.description(StatusCode.Unauthorized, "Cookie is invalid or timed out")
       )
 
   val sync: Endpoint[(Option[String], Sync), StatusCode, NormalizedTextMessageVector, Nothing] =
