@@ -15,7 +15,7 @@ libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging"  % "3.9.2
 libraryDependencies += "com.github.pureconfig"      %% "pureconfig"     % "0.12.3"
 libraryDependencies += "com.beachape"               %% "enumeratum"     % "1.6.0"
 
-val tapirVersion = "0.14.4"
+val tapirVersion = "0.15.0"
 
 libraryDependencies ++= Seq(
   "com.softwaremill.sttp.tapir" %% "tapir-core",
