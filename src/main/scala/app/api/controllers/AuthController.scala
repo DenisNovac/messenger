@@ -18,12 +18,25 @@ class AuthController[F[_]: Monad] extends LazyLogging {
     for {
       cookie <- AuthService.authorize(authMsg).attempt
     } yield cookie
-  }.map {
+  }.map(_.fold(
+    {
+      case e if e.getMessage.contains("more rows expected") =>
+        logger.error(s"No user ${authMsg.id} found for authorization")
+        StatusCode.Forbidden.asLeft[CookieValueWithMeta]
+      case e =>
+        logger.error(s"Unexpected exception on authentication with id ${authMsg.id}: \n$e")
+        StatusCode.InternalServerError.asLeft[CookieValueWithMeta]
+    },
+    value => value.asRight[StatusCode]
+  ))
+
+
+  /*{
     case Left(value) =>
-      logger.error(s"Expected error on signIn with id ${authMsg.id}: ${value.getMessage}")
+      logger.error(s"Processed to Forbidden error on signIn with id ${authMsg.id}: $value")
       StatusCode.Forbidden.asLeft[CookieValueWithMeta]
     case Right(value) => value.asRight[StatusCode]
-  }
+  }*/
 
   /** Validate cookie */
   def testAuth(cookie: Option[String]): IO[Either[StatusCode, StatusCode]] =

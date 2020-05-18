@@ -28,7 +28,7 @@ object AuthService extends LazyLogging {
   /** Checks user-password pair and issues and cookie if user exist */
   def authorize(authMsg: Authorize): IO[CookieValueWithMeta] =
     for {
-      user        <- PostgresService.getUserById(authMsg.id)
+      user        <- PostgresService.checkUserPassword(authMsg.id, authMsg.password)
       generatedId = UUID.randomUUID
       expires     = getExpiration
       cookieMeta = CookieValueWithMeta(
@@ -43,7 +43,6 @@ object AuthService extends LazyLogging {
       )
       cookie = Cookie(generatedId, user.id, expires, cookieMeta)
       _      <- PostgresService.putCookie(cookie)
-
     } yield cookieMeta
 
   /** Cookie must be from the list, must not be expired and must be issued to real user */

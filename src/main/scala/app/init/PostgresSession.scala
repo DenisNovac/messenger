@@ -35,7 +35,7 @@ class PostgresSession(config: DatabaseConfig)(implicit val ec: ExecutionContext)
   private val driver           = "org.postgresql.Driver"
   private val connectionString = s"jdbc:postgresql://${config.host}:${config.port}/${config.name}"
 
-  val transactor: Aux[IO, Unit] =
+  val transactor: Transactor[IO] =
     Transactor.fromDriverManager[IO](driver, connectionString, config.user, config.password)
 
   private val usersList = List(

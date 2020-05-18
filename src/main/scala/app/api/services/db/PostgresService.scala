@@ -18,7 +18,10 @@ object PostgresService {
 
   /** Get user by immutable ID */
   def getUserById(id: Long): IO[User] =
-    sql"SELECT FROM users WHERE id = $id".stripMargin.query[User].unique.transact(transactor)
+    sql"SELECT * FROM users WHERE id = $id".query[User].unique.transact(transactor)
+
+  def checkUserPassword(id: Long, pwd: String): IO[User] =
+    sql"SELECT * FROM users WHERE id = $id AND password = $pwd".query[User].unique.transact(transactor)
 
   /** Get user by mutable login (which can be changed but can not be used twice in server) */
   def getUserByEmail(id: Long): Option[User] = ???
