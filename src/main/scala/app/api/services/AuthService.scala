@@ -17,7 +17,9 @@ import doobie.util.update.Update
 import io.circe.Json
 import io.circe.syntax._
 import cats.syntax.applicative._
+import cats.syntax.applicativeError._
 import cats.syntax.either._
+import doobie.util.invariant.UnexpectedCursorPosition
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -56,15 +58,15 @@ object AuthService extends LazyLogging {
       if isNotExpired(actualCookie.expires)
     } yield action(actualCookie)
   }.getOrElseF(StatusCode.Unauthorized.asLeft[T].pure[IO])
-    .handleErrorWith {
+    .handleError {
 
       /** Database errors */
-      case e: Exception if e.getMessage.contains("more rows expected") =>
-        StatusCode.Unauthorized.asLeft[T].pure[IO]
+      case e: UnexpectedCursorPosition =>
+        StatusCode.Unauthorized.asLeft[T]
 
       case e: Exception =>
         logger.error(s"Unexpected exception from authorizedAction: $e")
-        StatusCode.InternalServerError.asLeft[T].pure[IO]
+        StatusCode.InternalServerError.asLeft[T]
     }
 
   /** Cookie must be from the list, must not be expired and must be issued to real user */

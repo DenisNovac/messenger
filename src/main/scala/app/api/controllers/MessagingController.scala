@@ -9,7 +9,9 @@ import cats.effect.IO
 import cats.syntax.either._
 import cats.syntax.option._
 import cats.syntax.applicative._
+import cats.syntax.applicativeError._
 import com.typesafe.scalalogging.LazyLogging
+import doobie.util.invariant.UnexpectedCursorPosition
 import sttp.model.StatusCode
 
 class MessagingController[F[_]: Monad] extends LazyLogging {
@@ -108,12 +110,15 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
           // User is not an admin
           case Some(conversation) => StatusCode.Forbidden.asLeft[StatusCode]
         }
-      }.handleErrorWith {
+      }.handleError {
         case e: MatchError =>
-          StatusCode.NotFound.asLeft[StatusCode].pure[IO]
+          StatusCode.NotFound.asLeft[StatusCode]
+        case e: UnexpectedCursorPosition =>
+          StatusCode.NotFound.asLeft[StatusCode]
+
         case e: Exception =>
           logger.error(s"Unexpected exception: $e")
-          StatusCode.InternalServerError.asLeft[StatusCode].pure[IO]
+          StatusCode.InternalServerError.asLeft[StatusCode]
       }.unsafeRunSync
 
     }
