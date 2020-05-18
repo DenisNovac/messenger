@@ -7,20 +7,16 @@ import sttp.tapir.{auth, cookie, endpoint, oneOf, statusCode, statusMapping, End
 
 object MessagingEndpoints {
 
-  val send: Endpoint[(Option[String], IncomingTextMessage), ErrorInfo, StatusCode, Nothing] =
+  val send: Endpoint[(Option[String], IncomingTextMessage), StatusCode, StatusCode, Nothing] =
     endpoint.post
       .in("send")
       .in(auth.apiKey(cookie[Option[String]]("sessionid")))
       .in(jsonBody[IncomingTextMessage])
       .out(statusCode)
       .errorOut(
-        oneOf(
-          statusMapping(StatusCode.NotFound, jsonBody[NotFound].description("Conversation not found")),
-          statusMapping(
-            StatusCode.Unauthorized,
-            jsonBody[Unauthorized].description("Cookie timed out or does not exists")
-          )
-        )
+        statusCode
+          .description(StatusCode.NotFound, "Conversation not found")
+          .description(StatusCode.Unauthorized, "User not found or cookie is invalid")
       )
       .tag("Messaging")
       .summary("Send message to some conversation")

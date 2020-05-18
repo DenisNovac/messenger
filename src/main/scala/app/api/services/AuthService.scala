@@ -5,11 +5,11 @@ import java.util.UUID
 
 import app.api.services.db.{InMemoryDatabase, PostgresService}
 import app.init.Init
-import app.model.{Authorize, Cookie, ServerConfig}
+import app.model.{Authorize, Cookie, ServerConfig, User}
 import cats.data.OptionT
 import cats.effect.IO
 import com.typesafe.scalalogging.LazyLogging
-import sttp.model.CookieValueWithMeta
+import sttp.model.{CookieValueWithMeta, StatusCode}
 import cats.syntax.option._
 import doobie.implicits._
 import doobie.util.Read
@@ -17,6 +17,7 @@ import doobie.util.update.Update
 import io.circe.Json
 import io.circe.syntax._
 import cats.syntax.applicative._
+import cats.syntax.either._
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -44,6 +45,17 @@ object AuthService extends LazyLogging {
       cookie = Cookie(generatedId, user.id, expires, cookieMeta)
       _      <- PostgresService.putCookie(cookie)
     } yield cookieMeta
+
+  /** Wrapper for wrapping actions which needs to be authorized.
+    * If token is invalid - it will always return Unauthorized message */
+  def authorizedAction[T](cookie: Option[String])(action: Cookie => Either[StatusCode, T]): IO[Either[StatusCode, T]] = {
+    for {
+      id           <- OptionT.fromOption[IO](cookie)
+      actualCookie <- OptionT.liftF(PostgresService.getCookie(id))
+      user         <- OptionT.liftF(PostgresService.getUserById(actualCookie.userid)) // user exists
+      if isNotExpired(actualCookie.expires)
+    } yield action(actualCookie)
+  }.getOrElseF(StatusCode.Unauthorized.asLeft[T].pure[IO])
 
   /** Cookie must be from the list, must not be expired and must be issued to real user */
   def isCookieValid(cookie: Option[String]): IO[Boolean] = {

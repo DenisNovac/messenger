@@ -6,7 +6,9 @@ import app.model.{ErrorInfo, Forbidden, InternalServerError, NotFound, Unauthori
 import app.model._
 import app.model.NormalizedTextMessage.normalize
 import cats.Monad
+import cats.effect.IO
 import cats.syntax.either._
+import cats.syntax.option._
 import cats.syntax.applicative._
 import com.typesafe.scalalogging.LazyLogging
 import sttp.model.StatusCode
@@ -19,25 +21,17 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
     * @param msg Message
     * @return
     */
-  def send(cookie: Option[String], msg: IncomingTextMessage): F[Either[ErrorInfo, StatusCode]] =
-    if (AuthService.isCookieValid(cookie).unsafeRunSync) {
+  def send(cookie: Option[String], msg: IncomingTextMessage): IO[Either[StatusCode, StatusCode]] =
+    AuthService.authorizedAction(cookie) { token =>
+      val (user, conversations) = InMemoryDatabase.getUserAndConversations(token.id.toString.some)
 
-      val (user, conversations) = InMemoryDatabase.getUserAndConversations(cookie)
-
-      // check if this messages is for suitable conversation
       if (conversations.map(_.id).contains(msg.conversation)) {
         InMemoryDatabase.putMessage(normalize(msg, user))
-        StatusCode.Ok.asRight[ErrorInfo].pure[F]
+        StatusCode.Ok.asRight[StatusCode]
       } else {
-        logger.error(s"Not found conversation ${msg.conversation} for user ${user}")
-        val r: ErrorInfo = NotFound("Conversation not found")
-        r.asLeft[StatusCode].pure[F]
+        StatusCode.NotFound.asLeft[StatusCode]
       }
 
-    } else {
-      logger.error(s"Invalid cookie dropped: $cookie")
-      val r: ErrorInfo = Unauthorized()
-      r.asLeft[StatusCode].pure[F]
     }
 
   /**
