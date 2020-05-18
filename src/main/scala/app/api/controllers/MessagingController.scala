@@ -2,7 +2,6 @@ package app.api.controllers
 
 import app.api.services.AuthService
 import app.api.services.db.{InMemoryDatabase, PostgresService}
-import app.model.{ErrorInfo, Forbidden, InternalServerError, NotFound, Unauthorized}
 import app.model._
 import app.model.NormalizedTextMessage.normalize
 import cats.Monad
