@@ -56,6 +56,16 @@ object AuthService extends LazyLogging {
       if isNotExpired(actualCookie.expires)
     } yield action(actualCookie)
   }.getOrElseF(StatusCode.Unauthorized.asLeft[T].pure[IO])
+    .handleErrorWith {
+
+      /** Database errors */
+      case e: Exception if e.getMessage.contains("more rows expected") =>
+        StatusCode.Unauthorized.asLeft[T].pure[IO]
+
+      case e: Exception =>
+        logger.error(s"Unexpected exception from authorizedAction: $e")
+        StatusCode.InternalServerError.asLeft[T].pure[IO]
+    }
 
   /** Cookie must be from the list, must not be expired and must be issued to real user */
   def isCookieValid(cookie: Option[String]): IO[Boolean] = {

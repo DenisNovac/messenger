@@ -12,7 +12,7 @@ import io.circe.syntax._
 
 object PostgresService {
 
-  implicit val lh: LogHandler = LogHandler.jdkLogHandler
+  //implicit val lh: LogHandler = LogHandler.jdkLogHandler
 
   import app.init.Init.postgres.transactor
 
