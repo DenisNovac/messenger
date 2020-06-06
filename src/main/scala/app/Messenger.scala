@@ -16,8 +16,6 @@ object Messenger extends IOApp with LazyLogging {
 
   logger.info(s"Application config: $config")
 
-  throw new Exception(":)")
-
   /** Server startup */
   private val server: ServerImpl = config.server match {
     case "http4s" =>

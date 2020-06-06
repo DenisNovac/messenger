@@ -18,10 +18,10 @@ object PostgresService {
 
   /** Get user by immutable ID */
   def getUserById(id: Long): IO[User] =
-    sql"SELECT * FROM users WHERE id = $id".query[User].unique.transact(transactor)
+    sql"SELECT * FROM messenger_user WHERE id = $id".query[User].unique.transact(transactor)
 
   def checkUserPassword(id: Long, pwd: String): IO[User] =
-    sql"SELECT * FROM users WHERE id = $id AND password = $pwd".query[User].unique.transact(transactor)
+    sql"SELECT * FROM messenger_user WHERE id = $id AND password = $pwd".query[User].unique.transact(transactor)
 
   /** Get user by mutable login (which can be changed but can not be used twice in server) */
   def getUserByEmail(id: Long): Option[User] = ???
@@ -32,12 +32,12 @@ object PostgresService {
   def getUserAndConversations(cookie: Option[String]) = ???
 
   def putCookie(cookie: Cookie): IO[Int] =
-    Update[Cookie]("INSERT INTO sessions(id, userid, expires, body) VALUES (?, ?, ?, ?)")
+    Update[Cookie]("INSERT INTO session(id, user_id, expires, body) VALUES (?, ?, ?, ?)")
       .run(cookie)
       .transact(transactor)
 
   def getCookie(id: String): IO[Cookie] =
-    sql"SELECT * FROM sessions WHERE id = ${UUID.fromString(id)}"
+    sql"SELECT * FROM session WHERE id = ${UUID.fromString(id)}"
       .query[Cookie]
       .unique
       .transact(transactor)

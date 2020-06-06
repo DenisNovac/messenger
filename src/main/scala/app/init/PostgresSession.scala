@@ -4,7 +4,9 @@ import java.util.UUID
 
 import app.model.{ConversationBody, DatabaseConfig, User}
 import cats.effect.{CancelToken, ContextShift, IO}
+import cats.effect.implicits._
 import cats.instances.list._
+import cats.syntax.flatMap._
 import cats.syntax.applicative._
 import cats.syntax.traverse._
 import com.typesafe.scalalogging.LazyLogging
@@ -51,21 +53,21 @@ class PostgresSession(config: DatabaseConfig)(implicit val ec: ExecutionContext)
   /** Return a List of ConnectionIO. It should be transformed to ConnectionIO[List] to execute */
   def insertConversation(conversation: ConversationBody): List[doobie.ConnectionIO[Int]] = {
 
-    def insertConversationRelation(relationName: String, convId: UUID, users: Set[Long]): doobie.ConnectionIO[Int] = {
-      val sql       = s"INSERT INTO $relationName(id, conv_id, user_id) VALUES (?, ?, ?)"
-      val withUuids = users.map(user => (UUID.randomUUID, convId, user)).toList
-      Update[(UUID, UUID, Long)](sql).updateMany(withUuids)
+    def insertConversationRelation(convId: UUID, users: Set[Long], status: Int): doobie.ConnectionIO[Int] = {
+      val sql       = s"INSERT INTO conversation_participant(id, conv_id, user_id, status) VALUES (?, ?, ?, ?)"
+      val withUuids = users.map(user => (UUID.randomUUID, convId, user, status)).toList
+      Update[(UUID, UUID, Long, Int)](sql).updateMany(withUuids)
     }
 
     val uuid = UUID.randomUUID
 
     List(
       sql"""
-           |INSERT INTO conversations(id, name) VALUES ($uuid, ${conversation.name})
+           |INSERT INTO conversation(id, name) VALUES ($uuid, ${conversation.name})
            |""".stripMargin.update.run,
-      insertConversationRelation("conversationsAdmins", uuid, conversation.admins),
-      insertConversationRelation("conversationsModerators", uuid, conversation.mods),
-      insertConversationRelation("conversationsUsers", uuid, conversation.participants)
+      insertConversationRelation(uuid, conversation.admins, 0),
+      insertConversationRelation(uuid, conversation.mods, 2),
+      insertConversationRelation(uuid, conversation.participants, 1)
     )
 
   }
@@ -79,46 +81,47 @@ class PostgresSession(config: DatabaseConfig)(implicit val ec: ExecutionContext)
   /**
     * Make Liquibase migration on PostgreSQL through a Doobie transactor
     */
-  private def migrate = {
+  private def migrate: IO[Either[Throwable, Unit]] = {
     logger.info("Migrations module started")
     import doobie.free.FC // raw db connection alias
 
     FC.raw { conn =>
-      val resourceAccessor = new ClassLoaderResourceAccessor(getClass.getClassLoader)
-      val database         = DatabaseFactory.getInstance.findCorrectDatabaseImplementation(new JdbcConnection(conn))
-      val liquibase        = new Liquibase(config.migrations, resourceAccessor, database)
-      liquibase.update("")
-    }.transact(transactor)
+        val resourceAccessor = new ClassLoaderResourceAccessor(getClass.getClassLoader)
+        val database         = DatabaseFactory.getInstance.findCorrectDatabaseImplementation(new JdbcConnection(conn))
+        val liquibase        = new Liquibase(config.migrations, resourceAccessor, database)
+        liquibase.update("")
+      }
+      .transact(transactor)
+      .attempt
   }
 
-  migrate.unsafeRunSync()
-
-  private val initTables = {
+  private val initTables: IO[Either[Throwable, Unit]] = {
     for {
-      //_ <- migrate
-      _ <- Update[User]("INSERT INTO users(id, name, password) VALUES (?, ?, ?)").updateMany(usersList)
+      _ <- Update[User]("INSERT INTO messenger_user(id, name, password) VALUES (?, ?, ?)").updateMany(usersList)
       _ <- initConversations
     } yield ()
   }.transact(transactor).attempt
 
   /** Database initialization will wait for database some time */
 
-  private def initTablesWithRetry(retries: Int, waitSecs: Int): IO[Unit] = initTables.flatMap {
+  private def withRetry(retries: Int, waitSecs: Int, target: IO[Either[Throwable, Unit]]): IO[Unit] = target.flatMap {
     case Left(error) if retries > 0 =>
       logger.error(
         s"Database error: ${error.getMessage}. Will retry in ${waitSecs} seconds. Retries left: ${retries - 1}"
       )
       Thread.sleep(waitSecs * 1000)
-      initTablesWithRetry(retries - 1, waitSecs)
+      withRetry(retries - 1, waitSecs, target)
     case Left(error) =>
       logger.error(s"Database error: ${error.getMessage}, stopping")
       throw error
-    case Right(value) =>
+    case _ =>
       logger.info(s"Database was initialized")
-      value.pure[IO]
+      IO.unit
   }
 
-  private val cancelableInit: CancelToken[IO] = initTablesWithRetry(3, 20).unsafeRunCancelable(r => IO())
+  private val cancelableInit: CancelToken[IO] =
+    (withRetry(3, 20, migrate) >>
+      withRetry(3, 20, initTables)).unsafeRunCancelable(r => IO())
 
   /** Method to cancel initialization which was not completed yet */
   def cancelInit(): Unit = {
