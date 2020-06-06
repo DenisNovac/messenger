@@ -2,7 +2,7 @@ package app.init
 
 import java.util.UUID
 
-import app.model.{ConversationBody, DatabaseConfig, User}
+import app.model.{ConversationBody, DatabaseConfig, MessengerUser}
 import cats.effect.{CancelToken, ContextShift, IO}
 import cats.effect.implicits._
 import cats.instances.list._
@@ -13,7 +13,9 @@ import com.typesafe.scalalogging.LazyLogging
 import doobie.Transactor
 import doobie.implicits._
 import doobie.postgres.implicits._
+import doobie.quill.DoobieContext
 import doobie.util.update.Update
+import io.getquill.NamingStrategy
 import javax.sql.DataSource
 import liquibase.Liquibase
 import liquibase.database.DatabaseFactory
@@ -32,6 +34,11 @@ class PostgresSession(config: DatabaseConfig)(implicit val ec: ExecutionContext)
 
   implicit private val cs: ContextShift[IO] = IO.contextShift(ec)
 
+  // naming scheme: https://getquill.io/#contexts-sql-contexts-naming-strategy
+  // must be like MessengerUser -> messenger_user
+  val quillContext = new DoobieContext.Postgres(NamingStrategy(io.getquill.SnakeCase, io.getquill.LowerCase))
+  import quillContext._
+
   private val driver           = "org.postgresql.Driver"
   private val connectionString = s"jdbc:postgresql://${config.host}:${config.port}/${config.name}"
 
@@ -39,9 +46,9 @@ class PostgresSession(config: DatabaseConfig)(implicit val ec: ExecutionContext)
     Transactor.fromDriverManager[IO](driver, connectionString, config.user, config.password)
 
   private val usersList = List(
-    User(1, "denis", "123"),
-    User(2, "filya", "123"),
-    User(3, "ivan", "123")
+    MessengerUser(1, "denis", "123"),
+    MessengerUser(2, "filya", "123"),
+    MessengerUser(3, "ivan", "123")
   )
 
   private val convsList = List(
@@ -97,7 +104,7 @@ class PostgresSession(config: DatabaseConfig)(implicit val ec: ExecutionContext)
 
   private val initTables: IO[Either[Throwable, Unit]] = {
     for {
-      _ <- Update[User]("INSERT INTO messenger_user(id, name, password) VALUES (?, ?, ?)").updateMany(usersList)
+      _ <- usersList.traverse(u => run(query[MessengerUser].insert(lift(u))))
       _ <- initConversations
     } yield ()
   }.transact(transactor).attempt

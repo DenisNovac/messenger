@@ -16,13 +16,13 @@ import sttp.model.CookieValueWithMeta
 
 trait AuthenticationData
 
-final case class User(id: Long, name: String, password: String) extends AuthenticationData {
+final case class MessengerUser(id: Long, name: String, password: String) extends AuthenticationData {
   def prettyName: String = s"$name#$id" // name like Sam#111
 }
 
-object User {
-  implicit val enc: Encoder[User] = deriveEncoder[User]
-  implicit val dec: Decoder[User] = deriveDecoder[User]
+object MessengerUser {
+  implicit val enc: Encoder[MessengerUser] = deriveEncoder[MessengerUser]
+  implicit val dec: Decoder[MessengerUser] = deriveDecoder[MessengerUser]
 }
 
 final case class Cookie(id: UUID, userid: Long, expires: Option[Instant], body: CookieValueWithMeta)

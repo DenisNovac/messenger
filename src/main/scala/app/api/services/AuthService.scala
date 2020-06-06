@@ -5,7 +5,7 @@ import java.util.UUID
 
 import app.api.services.db.{InMemoryDatabase, PostgresService}
 import app.init.Init
-import app.model.{Authorize, Cookie, ServerConfig, User}
+import app.model.{Authorize, Cookie, ServerConfig, MessengerUser}
 import cats.data.OptionT
 import cats.effect.IO
 import com.typesafe.scalalogging.LazyLogging

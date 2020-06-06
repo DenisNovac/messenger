@@ -27,13 +27,13 @@ object InMemoryDatabase {
     c
   }
 
-  val users: Map[Long, User] = Map(
-    1L -> User(1, "denis", "123"),
-    2L -> User(2, "philip", "456"),
-    3L -> User(3, "anon", "anon")
+  val users: Map[Long, MessengerUser] = Map(
+    1L -> MessengerUser(1, "denis", "123"),
+    2L -> MessengerUser(2, "philip", "456"),
+    3L -> MessengerUser(3, "anon", "anon")
   )
 
-  def getUserById(id: Long): Option[User] =
+  def getUserById(id: Long): Option[MessengerUser] =
     users.get(id)
 
   private var messages: Vector[NormalizedTextMessage] = Vector.empty

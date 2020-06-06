@@ -6,10 +6,10 @@ import com.typesafe.scalalogging.LazyLogging
 trait DatabaseService extends LazyLogging {
 
   /** Get user by immutable ID */
-  def getUserById(id: Long): Option[User]
+  def getUserById(id: Long): Option[MessengerUser]
 
   /** Get user by mutable login (which can be changed but can not be used twice in server) */
-  def getUserByEmail(id: Long): Option[User]
+  def getUserByEmail(id: Long): Option[MessengerUser]
 
   def getUserConversations: Vector[Conversation]
 
