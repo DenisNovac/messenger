@@ -2,23 +2,21 @@ package app.init
 
 import java.util.UUID
 
-import app.model.{Conversation, ConversationBody, DatabaseConfig, DatabaseTables, User}
-import doobie.Transactor
-import cats.Monad
-import cats.effect.{CancelToken, ContextShift, IO, SyncIO}
+import app.model.{ConversationBody, DatabaseConfig, User}
+import cats.effect.{CancelToken, ContextShift, IO}
+import cats.instances.list._
 import cats.syntax.applicative._
 import cats.syntax.traverse._
-import cats.instances.list._
-import cats.free.Free
 import com.typesafe.scalalogging.LazyLogging
-import doobie.free.connection
-import doobie.free.connection.ConnectionIO
+import doobie.Transactor
 import doobie.implicits._
-import doobie.util.fragment.Fragment
 import doobie.postgres.implicits._
-import doobie.util.log.LogHandler
-import doobie.util.transactor.Transactor.Aux
 import doobie.util.update.Update
+import javax.sql.DataSource
+import liquibase.Liquibase
+import liquibase.database.DatabaseFactory
+import liquibase.database.jvm.JdbcConnection
+import liquibase.resource.ClassLoaderResourceAccessor
 
 import scala.concurrent.ExecutionContext
 
@@ -78,9 +76,26 @@ class PostgresSession(config: DatabaseConfig)(implicit val ec: ExecutionContext)
     } yield insertConversation(c)
   }.flatten.sequence
 
+  /**
+    * Make Liquibase migration on PostgreSQL through a Doobie transactor
+    */
+  private def migrate = {
+    logger.info("Migrations module started")
+    import doobie.free.FC // raw db connection alias
+
+    FC.raw { conn =>
+      val resourceAccessor = new ClassLoaderResourceAccessor(getClass.getClassLoader)
+      val database         = DatabaseFactory.getInstance.findCorrectDatabaseImplementation(new JdbcConnection(conn))
+      val liquibase        = new Liquibase(config.migrations, resourceAccessor, database)
+      liquibase.update("")
+    }.transact(transactor)
+  }
+
+  migrate.unsafeRunSync()
+
   private val initTables = {
     for {
-      _ <- DatabaseTables.values.map(_.create).toList.sequence
+      //_ <- migrate
       _ <- Update[User]("INSERT INTO users(id, name, password) VALUES (?, ?, ?)").updateMany(usersList)
       _ <- initConversations
     } yield ()

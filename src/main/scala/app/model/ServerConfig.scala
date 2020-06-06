@@ -15,5 +15,6 @@ final case class DatabaseConfig(
     port: Int,
     name: String,
     user: String,
-    password: String
+    password: String,
+    migrations: String
 )

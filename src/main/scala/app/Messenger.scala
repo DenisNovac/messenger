@@ -16,14 +16,14 @@ object Messenger extends IOApp with LazyLogging {
 
   logger.info(s"Application config: $config")
 
+  throw new Exception(":)")
+
   /** Server startup */
   private val server: ServerImpl = config.server match {
-    case "akka" =>
-      //new AkkaHttpServer
-      throw new NotImplementedError("Akka Http implementation is not developed for now")
     case "http4s" =>
       logger.info("Starting http4s server")
       new Http4sServer
+
     case _ => throw new IllegalArgumentException("No such server type. Only 'http4s' has implementation")
   }
 
