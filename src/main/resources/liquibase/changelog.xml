@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.5.xsd">
+
+    <changeSet id="Initial" author="DenisNovac">
+
+        <createTable tableName="messenger_user" remarks="Список юзеров">
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" nullable="false" unique="true"/>
+            </column>
+
+            <column name="name" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="password" type="VARCHAR(30)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+        </createTable>
+
+
+        <createTable tableName="session" remarks="Список сессий">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false" unique="true"/>
+            </column>
+
+            <column name="user_id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false" foreignKeyName="user_must_exist_for_cookie"
+                             references="messenger_user(id)"/>
+            </column>
+
+            <column name="expires" type="TIMESTAMP WITH TIME ZONE"/>
+
+            <column name="body" type="JSON">
+                <constraints nullable="false"/>
+            </column>
+
+        </createTable>
+
+
+        <createTable tableName="conversation" remarks="Список бесед">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false" unique="true"/>
+            </column>
+
+            <column name="name" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+
+        </createTable>
+
+
+        <createTable tableName="conversation_participant" remarks="Список участников и их прав">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false" unique="true"/>
+            </column>
+
+            <column name="conv_id" type="UUID">
+                <constraints nullable="false" foreignKeyName="participants_to_conversations_key"
+                             references="conversation(id)"/>
+            </column>
+
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="participants_to_users_key" references="messenger_user(id)"/>
+            </column>
+
+            <!-- 0 - user, 1 - admin, 2 - mod -->
+            <column name="status" type="SMALLINT">
+                <constraints nullable="false"/>
+            </column>
+
+        </createTable>
+
+
+    </changeSet>
+
+
+</databaseChangeLog>

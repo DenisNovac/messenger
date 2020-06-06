@@ -36,6 +36,8 @@ libraryDependencies ++= Seq(
   "org.tpolecat" %% "doobie-postgres"
 ).map(_ % doobieVersion)
 
+libraryDependencies += "org.liquibase" % "liquibase-core" % "3.9.0"
+
 val circeVersion = "0.13.0"
 
 libraryDependencies ++= Seq(
