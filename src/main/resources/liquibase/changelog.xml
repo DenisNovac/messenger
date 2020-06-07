@@ -22,7 +22,7 @@
         </createTable>
 
 
-        <createTable tableName="session" remarks="Список сессий">
+        <createTable tableName="authorized_session" remarks="Список сессий">
             <column name="id" type="UUID">
                 <constraints primaryKey="true" nullable="false" unique="true"/>
             </column>
@@ -34,7 +34,7 @@
 
             <column name="expires" type="TIMESTAMP WITH TIME ZONE"/>
 
-            <column name="body" type="JSON">
+            <column name="body" type="TEXT">
                 <constraints nullable="false"/>
             </column>
 

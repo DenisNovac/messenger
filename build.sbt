@@ -29,11 +29,12 @@ libraryDependencies ++= Seq(
   "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-akka-http"
 ).map(_ % tapirVersion)
 
-val doobieVersion = "0.8.8"
+val doobieVersion = "0.9.0"
 
 libraryDependencies ++= Seq(
   "org.tpolecat" %% "doobie-core",
-  "org.tpolecat" %% "doobie-postgres"
+  "org.tpolecat" %% "doobie-postgres",
+  "org.tpolecat" %% "doobie-quill"
 ).map(_ % doobieVersion)
 
 libraryDependencies += "org.liquibase" % "liquibase-core" % "3.9.0"

@@ -1,46 +1,50 @@
 package app.api.services.db
 import java.util.UUID
 
-import app.model.{Conversation, ConversationBody, Cookie, User}
-import app.init.PostgresSession
+import app.model.{AuthorizedSession, Conversation, ConversationBody, MessengerUser}
 import cats.effect.IO
+import cats.syntax.applicativeError._
+import cats.syntax.flatMap._
 import doobie.implicits._
-import doobie.postgres.implicits._
-import doobie.util.log.LogHandler
-import doobie.util.update.Update
-import io.circe.syntax._
+import app.model.quillmappings.QuillCookieValueWithMetaMapping._
+import app.model.quillmappings.QuillInstantMapping._
 
 object PostgresService {
 
   //implicit val lh: LogHandler = LogHandler.jdkLogHandler
 
+  import app.init.Init.postgres.quillContext._
   import app.init.Init.postgres.transactor
 
-  /** Get user by immutable ID */
-  def getUserById(id: Long): IO[User] =
-    sql"SELECT * FROM messenger_user WHERE id = $id".query[User].unique.transact(transactor)
+  def getUserById(id: Long): IO[Option[MessengerUser]] =
+    run(query[MessengerUser].filter(_.id == lift(id)).take(1)).transact(transactor).map(_.headOption)
 
-  def checkUserPassword(id: Long, pwd: String): IO[User] =
-    sql"SELECT * FROM messenger_user WHERE id = $id AND password = $pwd".query[User].unique.transact(transactor)
+  def checkUserPassword(id: Long, pwd: String): IO[Option[MessengerUser]] =
+    run {
+      query[MessengerUser]
+        .filter(_.id == lift(id))
+        .filter(_.password == lift(pwd))
+        .take(1)
+    }.transact(transactor)
+      .map(_.headOption)
 
   /** Get user by mutable login (which can be changed but can not be used twice in server) */
-  def getUserByEmail(id: Long): Option[User] = ???
+  def getUserByEmail(id: Long): Option[MessengerUser] = ???
 
   def getUserConversations: Vector[Conversation] = ???
 
   //: (User, Vector[Conversation])
   def getUserAndConversations(cookie: Option[String]) = ???
 
-  def putCookie(cookie: Cookie): IO[Int] =
-    Update[Cookie]("INSERT INTO session(id, user_id, expires, body) VALUES (?, ?, ?, ?)")
-      .run(cookie)
-      .transact(transactor)
+  def putCookie(cookie: AuthorizedSession): IO[Unit] =
+    run(
+      query[AuthorizedSession].insert(lift(cookie))
+    ).transact(transactor) >> IO.unit
 
-  def getCookie(id: String): IO[Cookie] =
-    sql"SELECT * FROM session WHERE id = ${UUID.fromString(id)}"
-      .query[Cookie]
-      .unique
-      .transact(transactor)
+  def getCookie(id: String): IO[AuthorizedSession] =
+    run(
+      query[AuthorizedSession].filter(_.id == lift(UUID.fromString(id))).take(1)
+    ).transact(transactor).map(_.head)
 
   def updateConversation(id: Long, newConv: ConversationBody): Unit = ???
 

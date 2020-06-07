@@ -1,11 +1,11 @@
 package app.api.services
 
-import java.time.Instant
+import java.time.{Instant, LocalDateTime, ZoneOffset}
 import java.util.UUID
 
 import app.api.services.db.{InMemoryDatabase, PostgresService}
 import app.init.Init
-import app.model.{Authorize, Cookie, ServerConfig, User}
+import app.model.{Authorize, AuthorizedSession, MessengerUser, ServerConfig}
 import cats.data.OptionT
 import cats.effect.IO
 import com.typesafe.scalalogging.LazyLogging
@@ -29,9 +29,9 @@ object AuthService extends LazyLogging {
   val cookieTimeout: FiniteDuration = config.sessionTimeout
 
   /** Checks user-password pair and issues and cookie if user exist */
-  def authorize(authMsg: Authorize): IO[CookieValueWithMeta] =
+  def authorize(authMsg: Authorize): OptionT[IO, CookieValueWithMeta] =
     for {
-      user        <- PostgresService.checkUserPassword(authMsg.id, authMsg.password)
+      user        <- OptionT(PostgresService.checkUserPassword(authMsg.id, authMsg.password))
       generatedId = UUID.randomUUID
       expires     = getExpiration
       cookieMeta = CookieValueWithMeta(
@@ -44,17 +44,19 @@ object AuthService extends LazyLogging {
         httpOnly = false,
         Map()
       )
-      cookie = Cookie(generatedId, user.id, expires, cookieMeta)
-      _      <- PostgresService.putCookie(cookie)
+      cookie = AuthorizedSession(generatedId, user.id, expires, cookieMeta)
+      _      <- OptionT.liftF(PostgresService.putCookie(cookie))
     } yield cookieMeta
 
   /** Wrapper for wrapping actions which needs to be authorized.
     * If token is invalid - it will always return Unauthorized message */
-  def authorizedAction[T](cookie: Option[String])(action: Cookie => Either[StatusCode, T]): IO[Either[StatusCode, T]] = {
+  def authorizedAction[T](
+      cookie: Option[String]
+  )(action: AuthorizedSession => Either[StatusCode, T]): IO[Either[StatusCode, T]] = {
     for {
       id           <- OptionT.fromOption[IO](cookie)
       actualCookie <- OptionT.liftF(PostgresService.getCookie(id))
-      user         <- OptionT.liftF(PostgresService.getUserById(actualCookie.userid)) // user exists
+      user         <- OptionT(PostgresService.getUserById(actualCookie.userId)) // user exists
       if isNotExpired(actualCookie.expires)
     } yield action(actualCookie)
   }.getOrElseF(StatusCode.Unauthorized.asLeft[T].pure[IO])
@@ -75,7 +77,7 @@ object AuthService extends LazyLogging {
       maybeCookie  <- OptionT.fromOption[IO](cookie)
       actualCookie <- OptionT.liftF(PostgresService.getCookie(maybeCookie))
       if isNotExpired(actualCookie.expires)
-      if InMemoryDatabase.users.contains(actualCookie.userid)
+      if InMemoryDatabase.users.contains(actualCookie.userId)
     } yield true
   }.getOrElseF(false.pure[IO])
 

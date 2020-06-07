@@ -27,13 +27,13 @@ object InMemoryDatabase {
     c
   }
 
-  val users: Map[Long, User] = Map(
-    1L -> User(1, "denis", "123"),
-    2L -> User(2, "philip", "456"),
-    3L -> User(3, "anon", "anon")
+  val users: Map[Long, MessengerUser] = Map(
+    1L -> MessengerUser(1, "denis", "123"),
+    2L -> MessengerUser(2, "philip", "456"),
+    3L -> MessengerUser(3, "anon", "anon")
   )
 
-  def getUserById(id: Long): Option[User] =
+  def getUserById(id: Long): Option[MessengerUser] =
     users.get(id)
 
   private var messages: Vector[NormalizedTextMessage] = Vector.empty
@@ -60,7 +60,7 @@ object InMemoryDatabase {
     * It is useful since cookie is in every request and there is no usernames after authorization
     * */
   def getUserAndConversations(cookie: Option[String]): (Long, Vector[Conversation]) = {
-    val userid: Long = PostgresService.getCookie(cookie.get).unsafeRunSync.userid
+    val userid: Long = PostgresService.getCookie(cookie.get).unsafeRunSync.userId
     val userConversations: Vector[Conversation] =
       InMemoryDatabase.getUserConversations.filter(_.body.participants.contains(userid))
 

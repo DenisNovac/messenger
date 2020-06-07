@@ -3,6 +3,7 @@ package app.api.controllers
 import app.api.services.AuthService
 import app.model.Authorize
 import cats.Monad
+import cats.data.OptionT
 import cats.effect.IO
 import cats.syntax.either._
 import cats.syntax.applicativeError._
@@ -17,14 +18,7 @@ class AuthController[F[_]: Monad] extends LazyLogging {
     for {
       cookie <- AuthService.authorize(authMsg)
     } yield cookie.asRight[StatusCode]
-  }.handleError {
-    case e: UnexpectedCursorPosition =>
-      logger.error(s"No user ${authMsg.id} found for authorization")
-      StatusCode.Forbidden.asLeft[CookieValueWithMeta]
-    case e =>
-      logger.error(s"Unexpected exception on authentication with id ${authMsg.id}: \n$e")
-      StatusCode.ServiceUnavailable.asLeft[CookieValueWithMeta]
-  }
+  }.getOrElse(StatusCode.Unauthorized.asLeft[CookieValueWithMeta])
 
   /** Validate cookie */
   def testAuth(cookie: Option[String]): IO[Either[StatusCode, StatusCode]] =
