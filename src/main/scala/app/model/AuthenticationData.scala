@@ -5,7 +5,6 @@ import java.util.{Date, UUID}
 
 import doobie.util.{Read, Write}
 import doobie.implicits.legacy.instant._
-import app.model.PostgresJsonMapping._
 import doobie.implicits._
 import doobie.postgres.implicits._
 import doobie.quill.DoobieContext

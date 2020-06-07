@@ -1,44 +1,21 @@
 package app.api.services.db
-import java.time.{Instant, LocalDateTime, ZoneOffset}
-import java.util.{Date, UUID}
+import java.util.UUID
 
 import app.model.{AuthorizedSession, Conversation, ConversationBody, MessengerUser}
-import app.init.PostgresSession
 import cats.effect.IO
-import doobie.implicits._
-import doobie.postgres.implicits._
-import doobie.util.log.LogHandler
-import doobie.util.update.Update
 import cats.syntax.applicativeError._
-import io.circe.syntax._
 import cats.syntax.flatMap._
-import io.circe.Json
-import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
-import sttp.model.CookieValueWithMeta
+import doobie.implicits._
+import app.model.quillmappings.QuillCookieValueWithMetaMapping._
+import app.model.quillmappings.QuillInstantMapping._
 
 object PostgresService {
 
   //implicit val lh: LogHandler = LogHandler.jdkLogHandler
 
-  import app.init.Init.postgres.transactor
   import app.init.Init.postgres.quillContext._
+  import app.init.Init.postgres.transactor
 
-  import app.model.AuthorizedSession._
-
-  implicit val instantEncoding: MappedEncoding[Instant, Date] = MappedEncoding[Instant, Date](Date.from)
-  implicit val instantDecoding: MappedEncoding[Date, Instant] = MappedEncoding[Date, Instant](_.toInstant())
-
-  implicit val cookieEncoding: MappedEncoding[CookieValueWithMeta, String] =
-    MappedEncoding[CookieValueWithMeta, String] { cookie =>
-      cookie.asJson.toString
-    }
-
-  implicit val cookieDecoding: MappedEncoding[String, CookieValueWithMeta] =
-    MappedEncoding[String, CookieValueWithMeta] { cookie =>
-      cookie.asJson.as[CookieValueWithMeta] match {
-        case Right(meta) => meta
-      }
-    }
 
   /** Get user by immutable ID */
   def getUserById(id: Long): IO[Option[MessengerUser]] =
