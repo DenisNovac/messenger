@@ -60,7 +60,7 @@ object InMemoryDatabase {
     * It is useful since cookie is in every request and there is no usernames after authorization
     * */
   def getUserAndConversations(cookie: Option[String]): (Long, Vector[Conversation]) = {
-    val userid: Long = PostgresService.getCookie(cookie.get).unsafeRunSync.userid
+    val userid: Long = PostgresService.getCookie(cookie.get).unsafeRunSync.userId
     val userConversations: Vector[Conversation] =
       InMemoryDatabase.getUserConversations.filter(_.body.participants.contains(userid))
 

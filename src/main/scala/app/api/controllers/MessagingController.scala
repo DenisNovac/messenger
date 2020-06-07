@@ -5,6 +5,7 @@ import app.api.services.db.{InMemoryDatabase, PostgresService}
 import app.model._
 import app.model.NormalizedTextMessage.normalize
 import cats.Monad
+import cats.data.OptionT
 import cats.effect.IO
 import cats.syntax.either._
 import cats.syntax.option._
@@ -79,7 +80,7 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
 
       {
         for {
-          newUser <- PostgresService.getUserById(add.newUserId)
+          newUser <- OptionT(PostgresService.getUserById(add.newUserId))
         } yield conversations.find(_.id == add.conversationId) match {
 
           case Some(conversation) if conversation.body.admins.contains(maybeAdmin) =>
@@ -110,16 +111,7 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
           // User is not an admin
           case Some(conversation) => StatusCode.Forbidden.asLeft[StatusCode]
         }
-      }.handleError {
-        case e: MatchError =>
-          StatusCode.NotFound.asLeft[StatusCode]
-        case e: UnexpectedCursorPosition =>
-          StatusCode.NotFound.asLeft[StatusCode]
-
-        case e: Exception =>
-          logger.error(s"Unexpected exception: $e")
-          StatusCode.InternalServerError.asLeft[StatusCode]
-      }.unsafeRunSync
+      }.getOrElse(StatusCode.NotFound.asLeft[StatusCode]).unsafeRunSync
 
     }
 }
