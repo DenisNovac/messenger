@@ -16,8 +16,6 @@ object PostgresService {
   import app.init.Init.postgres.quillContext._
   import app.init.Init.postgres.transactor
 
-
-  /** Get user by immutable ID */
   def getUserById(id: Long): IO[Option[MessengerUser]] =
     run(query[MessengerUser].filter(_.id == lift(id)).take(1)).transact(transactor).map(_.headOption)
 
@@ -39,13 +37,9 @@ object PostgresService {
   def getUserAndConversations(cookie: Option[String]) = ???
 
   def putCookie(cookie: AuthorizedSession): IO[Unit] =
-    (run(
+    run(
       query[AuthorizedSession].insert(lift(cookie))
-    ).transact(transactor) >> IO.unit).handleError {
-      case e =>
-        println(":DDD")
-        throw e
-    }
+    ).transact(transactor) >> IO.unit
 
   def getCookie(id: String): IO[AuthorizedSession] =
     run(
