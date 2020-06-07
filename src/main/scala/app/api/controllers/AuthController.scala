@@ -1,11 +1,12 @@
 package app.api.controllers
 
 import app.api.services.AuthService
-import app.model.Authorize
+import app.model.{Authorize, AuthorizedSession}
 import cats.Monad
 import cats.data.OptionT
 import cats.effect.IO
 import cats.syntax.either._
+import cats.syntax.applicative._
 import cats.syntax.applicativeError._
 import com.typesafe.scalalogging.LazyLogging
 import doobie.util.invariant.UnexpectedCursorPosition
@@ -21,9 +22,8 @@ class AuthController[F[_]: Monad] extends LazyLogging {
   }.getOrElse(StatusCode.Unauthorized.asLeft[CookieValueWithMeta])
 
   /** Validate cookie */
-  def testAuth(cookie: Option[String]): IO[Either[StatusCode, StatusCode]] = ???
-    /*AuthService.isCookieValid(cookie).map {
-      case true  => StatusCode.Ok.asRight[StatusCode]
-      case false => StatusCode.Unauthorized.asLeft[StatusCode]
-    }*/
+  def testAuth(cookie: Option[String]): IO[Either[StatusCode, AuthorizedSession]] =
+    AuthService.authorizedAction(cookie) { token =>
+      token.asRight[StatusCode].pure[IO]
+    }
 }

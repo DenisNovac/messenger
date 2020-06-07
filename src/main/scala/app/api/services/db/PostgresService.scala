@@ -73,10 +73,10 @@ object PostgresService extends LazyLogging {
       query[AuthorizedSession].insert(lift(cookie))
     ).transact(transactor) >> IO.unit
 
-  def getCookie(id: String): IO[AuthorizedSession] =
+  def getCookie(id: UUID): IO[Option[AuthorizedSession]] =
     run(
-      query[AuthorizedSession].filter(_.id == lift(UUID.fromString(id))).take(1)
-    ).transact(transactor).map(_.head)
+      query[AuthorizedSession].filter(_.id == lift(id))
+    ).transact(transactor).map(_.headOption)
 
   def addParticipants(convId: UUID, participant: Long): IO[Unit] = {
     for {

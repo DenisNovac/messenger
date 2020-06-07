@@ -9,6 +9,8 @@ import cats.Monad
 import cats.data.OptionT
 import cats.effect.IO
 import cats.syntax.either._
+import cats.syntax.applicative._
+import cats.syntax.flatMap._
 
 import com.typesafe.scalalogging.LazyLogging
 import sttp.model.StatusCode
@@ -77,47 +79,36 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
     */
   def addToConversation(cookie: Option[String], add: AddToConversation): IO[Either[StatusCode, StatusCode]] =
     AuthService.authorizedAction(cookie) { token =>
-      PostgresService.getConversationsWithMeta(token).flatMap { convs =>
-        val maybeAdmin    = token.userId
-        val conversations = convs.userConversations
+      {
+        for {
+          convs   <- OptionT.liftF[IO, Conversations](PostgresService.getConversationsWithMeta(token))
+          newUser <- OptionT[IO, MessengerUser](PostgresService.getUserById(add.newUserId))
+          controlled <- OptionT.fromOption[IO](
+                         convs.userConversations.find(_.id == add.conversationId)
+                       )
+          if controlled.body.admins.contains(token.userId)
+          allUsers = controlled.body.participants ++ controlled.body.admins ++ controlled.body.mods
+        } yield
+          if (allUsers.contains(newUser.id)) {
+            StatusCode.Ok.asRight[StatusCode].pure[IO]
+          } else {
+            val welcome = normalize(
+              IncomingTextMessage(
+                add.conversationId,
+                1,
+                s"${token.userId} adds user ${newUser.prettyName} to this conversation"
+              ),
+              token.userId
+            )
 
-        {
-          for {
-            newUser <- OptionT(PostgresService.getUserById(add.newUserId))
-          } yield conversations.find(_.id == add.conversationId) match {
+            InMemoryDatabase.putMessage(welcome)
 
-            case Some(conversation) if conversation.body.admins.contains(maybeAdmin) =>
-              if (conversation.body.participants.contains(newUser.id))
-                StatusCode.Ok.asRight[StatusCode] // just OK without welcome message, user is already here
-              else {
-
-                val welcome = normalize(
-                  IncomingTextMessage(
-                    add.conversationId,
-                    1,
-                    s"${maybeAdmin} adds user ${newUser.prettyName} to this conversation"
-                  ),
-                  maybeAdmin
-                )
-
-                InMemoryDatabase.putMessage(welcome)
-
-                PostgresService
-                  .addParticipants(
-                    add.conversationId,
-                    newUser.id
-                  )
-                  .unsafeRunSync()
-
-                StatusCode.Ok.asRight[StatusCode]
-              }
-
-            // User is not an admin
-            case Some(conversation) => StatusCode.Forbidden.asLeft[StatusCode]
+            PostgresService
+              .addParticipants(
+                add.conversationId,
+                newUser.id
+              ) >> StatusCode.Ok.asRight[StatusCode].pure[IO]
           }
-        }.getOrElse(StatusCode.NotFound.asLeft[StatusCode])
-
-      }
-
+      }.getOrElse(StatusCode.NotFound.asLeft[StatusCode].pure[IO]).flatten
     }
 }

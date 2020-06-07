@@ -12,8 +12,6 @@ import com.typesafe.scalalogging.LazyLogging
 import sttp.model.{CookieValueWithMeta, StatusCode}
 import cats.syntax.option._
 import doobie.implicits._
-import doobie.util.Read
-import doobie.util.update.Update
 import io.circe.Json
 import io.circe.syntax._
 import cats.syntax.applicative._
@@ -23,6 +21,7 @@ import cats.syntax.flatMap._
 import doobie.util.invariant.UnexpectedCursorPosition
 
 import scala.concurrent.duration.FiniteDuration
+import scala.util.Try
 
 object AuthService extends LazyLogging {
   private val transactor            = Init.postgres.transactor
@@ -49,15 +48,20 @@ object AuthService extends LazyLogging {
       _      <- OptionT.liftF(PostgresService.putCookie(cookie))
     } yield cookieMeta
 
-  /** Wrapper for wrapping actions which needs to be authorized.
+  /** Wrapper for actions which needs to be authorized.
     * If token is invalid - it will always return Unauthorized message */
   def authorizedAction[T](
       cookie: Option[String]
-  )(action: AuthorizedSession => IO[Either[StatusCode, T]]): IO[Either[StatusCode, T]] =
-    PostgresService.getCookie(cookie.getOrElse("")).flatMap { token =>
+  )(action: AuthorizedSession => IO[Either[StatusCode, T]]): IO[Either[StatusCode, T]] = {
+    for {
+      actualCookie <- OptionT.fromOption[IO](cookie)
+      uuid         <- OptionT.fromOption[IO](Try(UUID.fromString(actualCookie)).toOption)
+      token        <- OptionT.apply[IO, AuthorizedSession](PostgresService.getCookie(uuid))
+    } yield {
       if (isNotExpired(token.expires)) action(token)
       else StatusCode.Unauthorized.asLeft[T].pure[IO]
     }
+  }.getOrElse(StatusCode.Unauthorized.asLeft[T].pure[IO]).flatten
 
   /** Sums current time and timeout from config */
   private def getExpiration: Option[Instant] = cookieTimeout match {
