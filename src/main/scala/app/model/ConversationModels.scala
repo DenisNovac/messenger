@@ -22,17 +22,19 @@ object ConversationBody {
   implicit val dec: Decoder[ConversationBody] = deriveDecoder[ConversationBody]
 }
 
-final case class ConversationApp(id: UUID, body: ConversationBody) {
+final case class ConversationLegacy(id: UUID, body: ConversationBody) {
 
-  def ++(that: ConversationApp) = {
+  def ++(that: ConversationLegacy) = {
     require(this.id == that.id)
-    ConversationApp(this.id, that.body ++ that.body)
+    ConversationLegacy(this.id, this.body ++ that.body)
   }
+
+  def empty = ConversationLegacy(this.id, ConversationBody(this.body.name, Set(), Set(), Set()))
 }
 
-object ConversationApp {
-  implicit val enc: Encoder[ConversationApp] = deriveEncoder[ConversationApp]
-  implicit val dec: Decoder[ConversationApp] = deriveDecoder[ConversationApp]
+object ConversationLegacy {
+  implicit val enc: Encoder[ConversationLegacy] = deriveEncoder[ConversationLegacy]
+  implicit val dec: Decoder[ConversationLegacy] = deriveDecoder[ConversationLegacy]
 }
 
 final case class ConversationAppNew(conv: Conversation, ptc: List[ConversationParticipant])

@@ -56,7 +56,7 @@ object NormalizedTextMessageVector {
   implicit val dec: Decoder[NormalizedTextMessageVector] = deriveDecoder[NormalizedTextMessageVector]
 }
 
-final case class Conversations(userConversations: Vector[ConversationApp]) extends Message
+final case class Conversations(userConversations: Vector[ConversationLegacy]) extends Message
 
 object Conversations {
   implicit val enc: Encoder[Conversations] = deriveEncoder[Conversations]
