@@ -60,9 +60,15 @@ class PostgresSession(config: DatabaseConfig)(implicit val ec: ExecutionContext)
   /** Return a List of ConnectionIO. It should be transformed to ConnectionIO[List] to execute */
   def insertConversation(conversation: ConversationBody): List[doobie.ConnectionIO[Int]] = {
 
-    def insertConversationRelation(convId: UUID, users: Set[Long], status: Int): doobie.ConnectionIO[Int] = {
-      val sql       = s"INSERT INTO conversation_participant(id, conv_id, user_id, status) VALUES (?, ?, ?, ?)"
-      val withUuids = users.map(user => (UUID.randomUUID, convId, user, status)).toList
+    def insertConversationRelation(convId: UUID, users: Set[Long]): doobie.ConnectionIO[Int] = {
+      val sql = s"INSERT INTO conversation_participant(id, conv_id, user_id, status) VALUES (?, ?, ?, ?)"
+      val withUuids = users.map { user =>
+        if (conversation.admins.contains(user))
+          (UUID.randomUUID, convId, user, 1)
+        else if (conversation.mods.contains(user))
+          (UUID.randomUUID, convId, user, 2)
+        else (UUID.randomUUID, convId, user, 0)
+      }.toList
       Update[(UUID, UUID, Long, Int)](sql).updateMany(withUuids)
     }
 
@@ -72,9 +78,7 @@ class PostgresSession(config: DatabaseConfig)(implicit val ec: ExecutionContext)
       sql"""
            |INSERT INTO conversation(id, name) VALUES ($uuid, ${conversation.name})
            |""".stripMargin.update.run,
-      insertConversationRelation(uuid, conversation.admins, 0),
-      insertConversationRelation(uuid, conversation.mods, 2),
-      insertConversationRelation(uuid, conversation.participants, 1)
+      insertConversationRelation(uuid, conversation.admins ++ conversation.mods ++ conversation.participants)
     )
 
   }
