@@ -2,6 +2,7 @@ package app.init
 
 import java.util.UUID
 
+import app.model.quillmappings.QuillPostgresContext
 import app.model.{ConversationBody, DatabaseConfig, MessengerUser}
 import cats.effect.{CancelToken, ContextShift, IO}
 import cats.effect.implicits._
@@ -13,6 +14,7 @@ import com.typesafe.scalalogging.LazyLogging
 import doobie.Transactor
 import doobie.implicits._
 import doobie.postgres.implicits._
+import app.model.quillmappings.QuillPostgresContext.ctx._
 import doobie.quill.DoobieContext
 import doobie.util.update.Update
 import io.getquill.NamingStrategy
@@ -33,11 +35,6 @@ class PostgresSession(config: DatabaseConfig)(implicit val ec: ExecutionContext)
   logger.info(s"Database config: $config")
 
   implicit private val cs: ContextShift[IO] = IO.contextShift(ec)
-
-  // naming scheme: https://getquill.io/#contexts-sql-contexts-naming-strategy
-  // must be like MessengerUser -> messenger_user
-  val quillContext = new DoobieContext.Postgres(NamingStrategy(io.getquill.SnakeCase, io.getquill.LowerCase))
-  import quillContext._
 
   private val driver           = "org.postgresql.Driver"
   private val connectionString = s"jdbc:postgresql://${config.host}:${config.port}/${config.name}"

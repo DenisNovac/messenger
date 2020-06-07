@@ -19,13 +19,14 @@ import cats.syntax.flatMap._
 import doobie.implicits._
 import app.model.quillmappings.QuillCookieValueWithMetaMapping._
 import app.model.quillmappings.QuillInstantMapping._
+import app.model.quillmappings.QuillPostgresContext
 import com.typesafe.scalalogging.LazyLogging
+import app.model.quillmappings.QuillPostgresContext.ctx._
 
 object PostgresService extends LazyLogging {
 
   //implicit val lh: LogHandler = LogHandler.jdkLogHandler
 
-  import app.init.Init.postgres.quillContext._
   import app.init.Init.postgres.transactor
 
   def getUserById(id: Long): IO[Option[MessengerUser]] =
