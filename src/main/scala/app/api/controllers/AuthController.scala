@@ -21,9 +21,9 @@ class AuthController[F[_]: Monad] extends LazyLogging {
   }.getOrElse(StatusCode.Unauthorized.asLeft[CookieValueWithMeta])
 
   /** Validate cookie */
-  def testAuth(cookie: Option[String]): IO[Either[StatusCode, StatusCode]] =
-    AuthService.isCookieValid(cookie).map {
+  def testAuth(cookie: Option[String]): IO[Either[StatusCode, StatusCode]] = ???
+    /*AuthService.isCookieValid(cookie).map {
       case true  => StatusCode.Ok.asRight[StatusCode]
       case false => StatusCode.Unauthorized.asLeft[StatusCode]
-    }
+    }*/
 }

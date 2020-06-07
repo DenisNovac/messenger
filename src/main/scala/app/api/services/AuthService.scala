@@ -19,6 +19,7 @@ import io.circe.syntax._
 import cats.syntax.applicative._
 import cats.syntax.applicativeError._
 import cats.syntax.either._
+import cats.syntax.flatMap._
 import doobie.util.invariant.UnexpectedCursorPosition
 
 import scala.concurrent.duration.FiniteDuration
@@ -52,34 +53,11 @@ object AuthService extends LazyLogging {
     * If token is invalid - it will always return Unauthorized message */
   def authorizedAction[T](
       cookie: Option[String]
-  )(action: AuthorizedSession => Either[StatusCode, T]): IO[Either[StatusCode, T]] = {
-    for {
-      id           <- OptionT.fromOption[IO](cookie)
-      actualCookie <- OptionT.liftF(PostgresService.getCookie(id))
-      user         <- OptionT(PostgresService.getUserById(actualCookie.userId)) // user exists
-      if isNotExpired(actualCookie.expires)
-    } yield action(actualCookie)
-  }.getOrElseF(StatusCode.Unauthorized.asLeft[T].pure[IO])
-    .handleError {
-
-      /** Database errors */
-      case e: UnexpectedCursorPosition =>
-        StatusCode.Unauthorized.asLeft[T]
-
-      case e: Exception =>
-        logger.error(s"Unexpected exception from authorizedAction: $e")
-        StatusCode.InternalServerError.asLeft[T]
+  )(action: AuthorizedSession => IO[Either[StatusCode, T]]): IO[Either[StatusCode, T]] =
+    PostgresService.getCookie(cookie.getOrElse("")).flatMap { token =>
+      if (isNotExpired(token.expires)) action(token)
+      else StatusCode.Unauthorized.asLeft[T].pure[IO]
     }
-
-  /** Cookie must be from the list, must not be expired and must be issued to real user */
-  def isCookieValid(cookie: Option[String]): IO[Boolean] = {
-    for {
-      maybeCookie  <- OptionT.fromOption[IO](cookie)
-      actualCookie <- OptionT.liftF(PostgresService.getCookie(maybeCookie))
-      if isNotExpired(actualCookie.expires)
-      if InMemoryDatabase.users.contains(actualCookie.userId)
-    } yield true
-  }.getOrElseF(false.pure[IO])
 
   /** Sums current time and timeout from config */
   private def getExpiration: Option[Instant] = cookieTimeout match {

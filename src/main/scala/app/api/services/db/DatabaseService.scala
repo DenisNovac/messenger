@@ -11,9 +11,9 @@ trait DatabaseService extends LazyLogging {
   /** Get user by mutable login (which can be changed but can not be used twice in server) */
   def getUserByEmail(id: Long): Option[MessengerUser]
 
-  def getUserConversations: Vector[Conversation]
+  def getUserConversations: Vector[ConversationApp]
 
-  def getUserAndConversations(cookie: Option[String]): (Long, Vector[Conversation])
+  def getUserAndConversations(cookie: Option[String]): (Long, Vector[ConversationApp])
 
   def putCookie(id: String, body: AuthorizedSession): Unit
 
@@ -21,7 +21,7 @@ trait DatabaseService extends LazyLogging {
 
   def updateConversation(id: Long, newConv: ConversationBody): Unit
 
-  def createConversation(newConv: Conversation): Unit
+  def createConversation(newConv: ConversationApp): Unit
 
   def removeConversation(id: Long)
 
