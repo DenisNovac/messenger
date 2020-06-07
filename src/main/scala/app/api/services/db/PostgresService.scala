@@ -127,10 +127,8 @@ object PostgresService {
         ConversationApp(n.conv.id, ConversationBody(n.conv.name, Set(), Set(), Set(userId)))
     }
 
-    parsed match {
-      case head :: something :: Nil => parsed.foldRight(head)((e, acc) => e ++ acc)
-      case head :: Nil              => head
-    }
-
+    if (parsed.length > 1) {
+      parsed.foldRight(parsed.head)((e, acc) => e ++ acc)
+    } else parsed.head
   }
 }

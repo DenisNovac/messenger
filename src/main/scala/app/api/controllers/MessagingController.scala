@@ -29,7 +29,7 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
       for {
         convs <- PostgresService.getUserConversations(token)
       } yield {
-        if (convs.contains(convId)) {
+        if (convs.map(_.id).contains(convId)) {
           InMemoryDatabase.putMessage(normalize(msg, token.userId))
           StatusCode.Ok.asRight[StatusCode]
         } else {

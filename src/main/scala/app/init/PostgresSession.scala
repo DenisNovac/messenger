@@ -52,9 +52,9 @@ class PostgresSession(config: DatabaseConfig)(implicit val ec: ExecutionContext)
   )
 
   private val convsList = List(
-    ConversationBody("test", Set(1), Set(), Set(1, 2, 3)),
-    ConversationBody("test2", Set(3), Set(), Set(1, 2, 3)),
-    ConversationBody("test3", Set(2), Set(), Set(1, 2))
+    ConversationBody("test", Set(1), Set(), Set(2, 3)),
+    ConversationBody("test2", Set(3), Set(), Set(1, 2)),
+    ConversationBody("test3", Set(2), Set(), Set(1))
   )
 
   /** Return a List of ConnectionIO. It should be transformed to ConnectionIO[List] to execute */
