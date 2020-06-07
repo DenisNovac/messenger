@@ -15,7 +15,7 @@ libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging"  % "3.9.2
 libraryDependencies += "com.github.pureconfig"      %% "pureconfig"     % "0.12.3"
 libraryDependencies += "com.beachape"               %% "enumeratum"     % "1.6.0"
 
-val tapirVersion = "0.15.0"
+val tapirVersion = "0.15.3"
 
 libraryDependencies ++= Seq(
   "com.softwaremill.sttp.tapir" %% "tapir-core",
@@ -47,15 +47,11 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-parser"
 ).map(_ % circeVersion)
 
-val catsVersion = "2.1.1"
-
-libraryDependencies ++= Seq(
-  "org.typelevel" %% "cats-core",
-  "org.typelevel" %% "cats-effect"
-).map(_ % catsVersion)
+libraryDependencies += "org.typelevel" %% "cats-core"   % "2.1.1"
+libraryDependencies += "org.typelevel" %% "cats-effect" % "2.1.3"
 
 /** Servers */
-val http4sVersion = "0.21.3"
+val http4sVersion = "0.21.4"
 
 libraryDependencies ++= Seq(
   "org.http4s" %% "http4s-core",
