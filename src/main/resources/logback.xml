@@ -22,19 +22,9 @@
         <groupId>org.liquibase</groupId>
         <artifactId>liquibase-maven-plugin</artifactId>
         <configuration>
-            <logging>info</logging>
-        </configuration>
-    </plugin>
-
-
-    <plugin>
-        <groupId>ch.qos.logback</groupId>
-        <artifactId>logback-classic</artifactId>
-        <configuration>
             <logging>error</logging>
         </configuration>
     </plugin>
-
 
 
 </configuration>
