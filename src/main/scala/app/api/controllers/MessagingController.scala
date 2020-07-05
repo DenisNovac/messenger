@@ -1,21 +1,16 @@
 package app.api.controllers
 
 import app.api.services.AuthService
-import app.api.services.db.{InMemoryDatabase, PostgresService}
+import app.api.services.db.{DatabaseService, InMemoryDatabase, TransactorDatabaseService}
 import app.model._
 import app.model.NormalizedTextMessage.normalize
-
-import cats.Monad
 import cats.data.OptionT
-import cats.effect.IO
-import cats.syntax.either._
-import cats.syntax.applicative._
-import cats.syntax.flatMap._
-
+import cats.effect.{Async, IO}
 import com.typesafe.scalalogging.LazyLogging
 import sttp.model.StatusCode
+import cats.implicits._
 
-class MessagingController[F[_]: Monad] extends LazyLogging {
+class MessagingController[F[_]: Async](authService: AuthService[F], db: DatabaseService[F]) extends LazyLogging {
 
   /**
     * Send messages only if user authorized and participates in conversation
@@ -24,12 +19,12 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
     * @param msg    Message
     * @return
     */
-  def send(cookie: Option[String], msg: IncomingTextMessage): IO[Either[StatusCode, StatusCode]] =
-    AuthService.authorizedAction(cookie) { token =>
+  def send(cookie: Option[String], msg: IncomingTextMessage): F[Either[StatusCode, StatusCode]] =
+    authService.authorizedAction(cookie) { token =>
       val convId = msg.conversation
 
       for {
-        convs <- PostgresService.getUserConversations(token)
+        convs <- db.getUserConversations(token)
       } yield {
         if (convs.map(_.id).contains(convId)) {
           InMemoryDatabase.putMessage(normalize(msg, token.userId))
@@ -48,10 +43,10 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
     * @param s      Sync message
     * @return
     */
-  def sync(cookie: Option[String], s: Sync): IO[Either[StatusCode, NormalizedTextMessageVector]] =
-    AuthService.authorizedAction(cookie) { token =>
+  def sync(cookie: Option[String], s: Sync): F[Either[StatusCode, NormalizedTextMessageVector]] =
+    authService.authorizedAction(cookie) { token =>
       for {
-        conversations <- PostgresService.getUserConversations(token)
+        conversations <- db.getUserConversations(token)
       } yield {
         val messagesSinceSync = InMemoryDatabase.getMessages
           .filter(m => conversations.map(_.id).contains(m.conversation)) // Messages from conversation of this user
@@ -65,9 +60,9 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
   /**
     * List of user's active conversations
     **/
-  def conversationsList(cookie: Option[String]): IO[Either[StatusCode, Conversations]] =
-    AuthService.authorizedAction(cookie) { token =>
-      PostgresService.getConversationsWithMeta(token).map(_.asRight[StatusCode])
+  def conversationsList(cookie: Option[String]): F[Either[StatusCode, Conversations]] =
+    authService.authorizedAction(cookie) { token =>
+      db.getConversationsWithMeta(token).map(_.asRight[StatusCode])
     }
 
   /**
@@ -77,20 +72,20 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
     * @param add    AddToConversation message
     * @return
     */
-  def addToConversation(cookie: Option[String], add: AddToConversation): IO[Either[StatusCode, StatusCode]] =
-    AuthService.authorizedAction(cookie) { token =>
+  def addToConversation(cookie: Option[String], add: AddToConversation): F[Either[StatusCode, StatusCode]] =
+    authService.authorizedAction(cookie) { token =>
       {
         for {
-          convs   <- OptionT.liftF[IO, Conversations](PostgresService.getConversationsWithMeta(token))
-          newUser <- OptionT[IO, MessengerUser](PostgresService.getUserById(add.newUserId))
-          controlled <- OptionT.fromOption[IO](
+          convs   <- OptionT.liftF[F, Conversations](db.getConversationsWithMeta(token))
+          newUser <- OptionT[F, MessengerUser](db.getUserById(add.newUserId))
+          controlled <- OptionT.fromOption[F](
                          convs.userConversations.find(_.id == add.conversationId)
                        )
           if controlled.body.admins.contains(token.userId)
           allUsers = controlled.body.participants ++ controlled.body.admins ++ controlled.body.mods
         } yield
           if (allUsers.contains(newUser.id)) {
-            StatusCode.Ok.asRight[StatusCode].pure[IO]
+            StatusCode.Ok.asRight[StatusCode].pure[F]
           } else {
             val welcome = normalize(
               IncomingTextMessage(
@@ -103,12 +98,11 @@ class MessagingController[F[_]: Monad] extends LazyLogging {
 
             InMemoryDatabase.putMessage(welcome)
 
-            PostgresService
-              .addParticipants(
-                add.conversationId,
-                newUser.id
-              ) >> StatusCode.Ok.asRight[StatusCode].pure[IO]
+            db.addParticipantsToConversation(
+              add.conversationId,
+              newUser.id
+            ) >> StatusCode.Ok.asRight[StatusCode].pure[F]
           }
-      }.getOrElse(StatusCode.NotFound.asLeft[StatusCode].pure[IO]).flatten
+      }.getOrElse(StatusCode.NotFound.asLeft[StatusCode].pure[F]).flatten
     }
 }

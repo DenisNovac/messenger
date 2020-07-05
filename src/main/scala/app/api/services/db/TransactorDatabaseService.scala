@@ -11,28 +11,25 @@ import app.model.{
   Conversations,
   MessengerUser
 }
-import cats.effect.IO
-import cats.syntax.applicativeError._
-import cats.syntax.traverse._
-import cats.instances.list._
-import cats.syntax.flatMap._
+import cats.effect.{Async, Bracket, Concurrent, IO, Sync}
 import doobie.implicits._
 import app.model.quillmappings.QuillCookieValueWithMetaMapping._
 import app.model.quillmappings.QuillInstantMapping._
 import app.model.quillmappings.QuillPostgresContext
 import com.typesafe.scalalogging.LazyLogging
 import app.model.quillmappings.QuillPostgresContext.ctx._
+import cats.{Applicative, Monad}
+import doobie.util.transactor.Transactor
+import cats.implicits._
 
-object PostgresService extends LazyLogging {
+class TransactorDatabaseService[F[_]: Async](transactor: Transactor[F]) extends DatabaseService[F] with LazyLogging {
 
   //implicit val lh: LogHandler = LogHandler.jdkLogHandler
 
-  import app.init.Init.postgres.transactor
-
-  def getUserById(id: Long): IO[Option[MessengerUser]] =
+  override def getUserById(id: Long): F[Option[MessengerUser]] =
     run(query[MessengerUser].filter(_.id == lift(id)).take(1)).transact(transactor).map(_.headOption)
 
-  def checkUserPassword(id: Long, pwd: String): IO[Option[MessengerUser]] =
+  override def checkUserPassword(id: Long, pwd: String): F[Option[MessengerUser]] =
     run {
       query[MessengerUser]
         .filter(_.id == lift(id))
@@ -41,10 +38,7 @@ object PostgresService extends LazyLogging {
     }.transact(transactor)
       .map(_.headOption)
 
-  /** Get user by mutable login (which can be changed but can not be used twice in server) */
-  def getUserByEmail(id: Long): Option[MessengerUser] = ???
-
-  def getUserConversations(as: AuthorizedSession): IO[List[Conversation]] = {
+  override def getUserConversations(as: AuthorizedSession): F[List[Conversation]] = {
 
     for {
       ids <- run(
@@ -58,28 +52,28 @@ object PostgresService extends LazyLogging {
     } yield convs
   }.transact(transactor)
 
-  def getConversationsWithMeta(as: AuthorizedSession): IO[Conversations] = {
+  override def getConversationsWithMeta(as: AuthorizedSession): F[Conversations] = {
 
-    val convsWithMeta = PostgresService.getUserConversations(as).flatMap { conversations =>
+    val convsWithMeta = getUserConversations(as).flatMap { conversations =>
       conversations
-        .traverse(PostgresService.getConversationWithParticipants)
-        .map(_.map(PostgresService.convNewToConvWithMeta))
+        .traverse(getConversationWithParticipants)
+        .map(_.map(convNewToConvWithMeta))
     }
     convsWithMeta.map(l => Conversations(l.toVector))
 
   }
 
-  def putCookie(cookie: AuthorizedSession): IO[Unit] =
+  override def putCookie(cookie: AuthorizedSession): F[Unit] =
     run(
       query[AuthorizedSession].insert(lift(cookie))
-    ).transact(transactor) >> IO.unit
+    ).transact(transactor) >> ().pure[F]
 
-  def getCookie(id: UUID): IO[Option[AuthorizedSession]] =
+  override def getCookie(id: UUID): F[Option[AuthorizedSession]] =
     run(
       query[AuthorizedSession].filter(_.id == lift(id))
     ).transact(transactor).map(_.headOption)
 
-  def addParticipants(convId: UUID, participant: Long): IO[Unit] = {
+  override def addParticipantsToConversation(convId: UUID, participant: Long): F[Unit] = {
     for {
       _ <- run(
             query[ConversationParticipant]
@@ -88,13 +82,9 @@ object PostgresService extends LazyLogging {
     } yield ()
   }.transact(transactor)
 
-  def createConversation(newConv: ConversationLegacy): Unit = ???
-
-  def removeConversation(id: Long): Unit = ???
-
   /** METHODS FOR CONVERSATIONS META CREATION */
 
-  private def getConversationWithParticipants(cv: Conversation): IO[ConversationAppNew] =
+  private def getConversationWithParticipants(cv: Conversation): F[ConversationAppNew] =
     for {
       participants <- run(
                        query[ConversationParticipant].filter(_.convId == lift(cv.id))

@@ -1,28 +1,26 @@
 package app.api.services.db
 
+import java.util.UUID
+
 import app.model._
+import cats.effect.Async
 import com.typesafe.scalalogging.LazyLogging
 
-trait DatabaseService extends LazyLogging {
+trait DatabaseService[F[_]] extends LazyLogging {
 
   /** Get user by immutable ID */
-  def getUserById(id: Long): Option[MessengerUser]
+  def getUserById(id: Long): F[Option[MessengerUser]]
 
-  /** Get user by mutable login (which can be changed but can not be used twice in server) */
-  def getUserByEmail(id: Long): Option[MessengerUser]
+  def checkUserPassword(id: Long, pwd: String): F[Option[MessengerUser]]
 
-  def getUserConversations: Vector[ConversationLegacy]
+  def getUserConversations(as: AuthorizedSession): F[List[Conversation]]
 
-  def getUserAndConversations(cookie: Option[String]): (Long, Vector[ConversationLegacy])
+  def getConversationsWithMeta(as: AuthorizedSession): F[Conversations]
 
-  def putCookie(id: String, body: AuthorizedSession): Unit
+  def putCookie(cookie: AuthorizedSession): F[Unit]
 
-  def getCookie(id: String): Option[AuthorizedSession]
+  def getCookie(id: UUID): F[Option[AuthorizedSession]]
 
-  def updateConversation(id: Long, newConv: ConversationBody): Unit
-
-  def createConversation(newConv: ConversationLegacy): Unit
-
-  def removeConversation(id: Long)
+  def addParticipantsToConversation(convId: UUID, participant: Long): F[Unit]
 
 }

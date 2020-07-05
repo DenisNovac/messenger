@@ -1,35 +1,51 @@
 package app
 
+import app.api.services.db.{DatabaseService, TransactorDatabaseService}
 import app.impl.Http4sServer
-import app.init.Init
+import app.init.DatabaseSession
 import app.model.ServerConfig
-import cats.effect.{ExitCase, ExitCode, IO, IOApp}
+import cats.effect.ExitCase.Canceled
+import cats.effect.{Blocker, ExitCase, ExitCode, IO, IOApp, Resource}
 import com.typesafe.scalalogging.LazyLogging
 import pureconfig.ConfigSource
+import pureconfig.generic.auto._
+import pureconfig.module.catseffect.syntax._
 
 import scala.concurrent.ExecutionContext
 
 object Messenger extends IOApp with LazyLogging {
 
-  private val config                        = Init.config
-  implicit private val ec: ExecutionContext = Init.ec
+  implicit private val ec: ExecutionContext = ExecutionContext.global
 
-  logger.info(s"Application config: $config")
-
-  /** Server startup */
-  private val server: IO[ExitCode] = config.server match {
-    case "http4s" =>
-      logger.info("Starting http4s server. Push 'Ctrl + C` to stop server...")
-      new Http4sServer().server
-
-    case _ => throw new IllegalArgumentException("No such server type. Only 'http4s' supported")
-  }
-
-  override def run(args: List[String]): IO[ExitCode] = server.guaranteeCase {
-    case ExitCase.Canceled =>
+  override def run(args: List[String]): IO[ExitCode] = app.allocated.map(_._1).guaranteeCase {
+    case Canceled =>
       IO {
-        logger.info("Server is shutting down")
-        Init.stop()
+        logger.info("Server was stopped by cancelling")
+      }
+
+    case r =>
+      IO {
+        logger.error(s"Server was stopped by unknown reason: $r")
       }
   }
+
+  private def app =
+    for {
+
+      blocker <- Blocker[IO]
+      config <- Resource.liftF(
+                 CatsEffectConfigSource(ConfigSource.file("./application.conf")).loadF[IO, ServerConfig](blocker)
+               )
+
+      _ <- Resource.liftF(IO(logger.info(s"Application config: $config")))
+
+      dbSession = new DatabaseSession(config.db)
+
+      _ <- Resource.liftF(dbSession.runMigrations)
+
+      dbService = new TransactorDatabaseService[IO](dbSession.transactor)
+
+      _ <- new Http4sServer(config, dbService).server
+
+    } yield ExitCode.Success
 }
