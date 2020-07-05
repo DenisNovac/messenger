@@ -1,5 +1,7 @@
 package app.model
 
+import pureconfig.ConfigReader
+
 import scala.concurrent.duration.FiniteDuration
 
 final case class ServerConfig(
