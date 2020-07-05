@@ -8,3 +8,13 @@ services:
       - "8080:8080"
     volumes:
       - "./application.conf:/opt/app/application.conf"
+
+  db:
+    container_name: db
+    image: postgres:alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=msg
+      - POSTGRES_PASSWORD=msg_passwd
+      - POSTGRES_DB=messenger

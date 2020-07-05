@@ -1,6 +1,7 @@
 package app.model
 
-import app.model.DatabaseAbstraction.Conversation
+import java.util.UUID
+
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 
@@ -13,7 +14,7 @@ object Authorize {
   implicit val dec: Decoder[Authorize] = deriveDecoder[Authorize]
 }
 
-final case class AddToConversation(conversationId: Long, newUserId: Long) extends Message
+final case class AddToConversation(conversationId: UUID, newUserId: Long) extends Message
 
 object AddToConversation {
   implicit val enc: Encoder[AddToConversation] = deriveEncoder[AddToConversation]
@@ -30,7 +31,7 @@ object Sync {
 
 final case class SyncConversations() extends Message
 
-final case class IncomingTextMessage(conversation: Long, timestamp: Long, text: String) extends Message
+final case class IncomingTextMessage(conversation: UUID, timestamp: Long, text: String) extends Message
 
 object IncomingTextMessage {
   implicit val enc: Encoder[IncomingTextMessage] = deriveEncoder[IncomingTextMessage]
@@ -38,7 +39,7 @@ object IncomingTextMessage {
 
 }
 
-final case class NormalizedTextMessage(conversation: Long, timestamp: Long, text: String, author: Long) extends Message
+final case class NormalizedTextMessage(conversation: UUID, timestamp: Long, text: String, author: Long) extends Message
 
 object NormalizedTextMessage {
   implicit val enc: Encoder[NormalizedTextMessage] = deriveEncoder[NormalizedTextMessage]
@@ -55,7 +56,7 @@ object NormalizedTextMessageVector {
   implicit val dec: Decoder[NormalizedTextMessageVector] = deriveDecoder[NormalizedTextMessageVector]
 }
 
-final case class Conversations(userConversations: Vector[Conversation]) extends Message
+final case class Conversations(userConversations: Vector[ConversationLegacy]) extends Message
 
 object Conversations {
   implicit val enc: Encoder[Conversations] = deriveEncoder[Conversations]

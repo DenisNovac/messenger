@@ -1,10 +1,22 @@
 package app.model
 
+import pureconfig.ConfigReader
+
 import scala.concurrent.duration.FiniteDuration
 
-case class ServerConfig(
+final case class ServerConfig(
     host: String,
     port: Int,
     server: String,
-    sessionTimeout: FiniteDuration
+    sessionTimeout: FiniteDuration,
+    db: DatabaseConfig
+)
+
+final case class DatabaseConfig(
+    driver: String,
+    url: String,
+    database: String,
+    user: String,
+    password: String,
+    migrations: String
 )

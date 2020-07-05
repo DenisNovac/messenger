@@ -1,51 +1,60 @@
 package app.api.services
 
-import java.time.Instant
+import java.time.{Instant, LocalDateTime, ZoneOffset}
 import java.util.UUID
 
-import app.ServerConfigReader
-import app.model.Authorize
-import app.model.{DatabaseAbstraction, ServerConfig}
+import app.api.services.db.{DatabaseService, InMemoryDatabase, TransactorDatabaseService}
+import app.model.{Authorize, AuthorizedSession, MessengerUser, ServerConfig}
+import cats.data.OptionT
+import cats.effect.{Async, IO}
 import com.typesafe.scalalogging.LazyLogging
-import sttp.model.CookieValueWithMeta
-import cats.syntax.option._
+import sttp.model.{CookieValueWithMeta, StatusCode}
+import doobie.implicits._
+import io.circe.Json
+import io.circe.syntax._
+import doobie.util.invariant.UnexpectedCursorPosition
+
+import cats.implicits._
 
 import scala.concurrent.duration.FiniteDuration
+import scala.util.Try
 
-object AuthService extends LazyLogging {
-
-  val config: ServerConfig          = ServerConfigReader.config
-  val cookieTimeout: FiniteDuration = config.sessionTimeout
+class AuthService[F[_]: Async](databaseService: DatabaseService[F], cookieTimeout: FiniteDuration) extends LazyLogging {
 
   /** Checks user-password pair and issues and cookie if user exist */
-  def authorize(authMsg: Authorize): Option[CookieValueWithMeta] =
-    DatabaseAbstraction.users.get(authMsg.id) match {
+  def authorize(authMsg: Authorize): OptionT[F, CookieValueWithMeta] =
+    for {
+      user        <- OptionT(databaseService.checkUserPassword(authMsg.id, authMsg.password))
+      generatedId = UUID.randomUUID
+      expires     = getExpiration
+      cookieMeta = CookieValueWithMeta(
+        value = generatedId.toString,
+        expires = expires,
+        None,
+        None,
+        None,
+        secure = false,
+        httpOnly = false,
+        Map()
+      )
+      cookie = AuthorizedSession(generatedId, user.id, expires, cookieMeta)
+      _      <- OptionT.liftF(databaseService.putCookie(cookie))
+    } yield cookieMeta
 
-      case Some(user) if authMsg.password == user.password =>
-        val id: String = UUID.randomUUID().toString
-        val expires    = getExpiration
-        val cookie     = CookieValueWithMeta(value = id, expires = expires, None, None, None, false, false, Map())
-
-        val cookieBody = DatabaseAbstraction.CookieBody(user, expires, cookie)
-
-        DatabaseAbstraction.putCookie(id, cookieBody)
-        cookie.some
-
-      case _ => None
+  /** Wrapper for actions which needs to be authorized.
+    * If token is invalid - it will always return Unauthorized message */
+  def authorizedAction[T](
+      cookie: Option[String]
+  )(action: AuthorizedSession => F[Either[StatusCode, T]]): F[Either[StatusCode, T]] = {
+    for {
+      actualCookie <- OptionT.fromOption[F](cookie)
+      uuid         <- OptionT.fromOption[F](Try(UUID.fromString(actualCookie)).toOption)
+      token        <- OptionT.apply[F, AuthorizedSession](databaseService.getCookie(uuid))
+    } yield {
+      if (isNotExpired(token.expires)) action(token)
+      else StatusCode.Unauthorized.asLeft[T].pure[F]
     }
-
-  /** Cookie must be from the list, must not be expired and must be issued to real user */
-  def isCookieValid(cookie: Option[String]): Boolean = {
-    val id = cookie.getOrElse("")
-
-    DatabaseAbstraction.getCookie(id) match {
-      case Some(value) =>
-        isNotExpired(value.expires) &&                      // cookie is not expired
-          DatabaseAbstraction.users.contains(value.user.id) // cookie belongs to real user
-      case None => false
-    }
-
-  }
+  }.getOrElse(StatusCode.Unauthorized.asLeft[T].pure[F]).flatten
 
   /** Sums current time and timeout from config */
   private def getExpiration: Option[Instant] = cookieTimeout match {
