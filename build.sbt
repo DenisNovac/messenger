@@ -10,6 +10,14 @@ scalacOptions ++= Seq(
   "-language:higherKinds"
 )
 
+// https://github.com/softwaremill/tapir/issues/182
+assemblyMergeStrategy in assembly := {
+  case PathList(ps @ _*) if ps.last.endsWith("pom.properties") => MergeStrategy.first
+  case x =>
+    val oldStrategy = (assemblyMergeStrategy in assembly).value
+    oldStrategy(x)
+}
+
 libraryDependencies += "ch.qos.logback"             % "logback-classic" % "1.2.3"
 libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging"  % "3.9.2"
 libraryDependencies += "com.github.pureconfig"      %% "pureconfig"     % "0.12.3"
@@ -60,15 +68,7 @@ libraryDependencies ++= Seq(
   "org.http4s" %% "http4s-dsl"
 ).map(_ % http4sVersion)
 
-libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.6.4"
-libraryDependencies += "com.typesafe.akka" %% "akka-http"  % "10.1.11"
-
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.1" % Test
-
-// https://github.com/softwaremill/tapir/issues/182
-assemblyMergeStrategy in assembly := {
-  case PathList(ps @ _*) if ps.last.endsWith("pom.properties") => MergeStrategy.first
-  case x =>
-    val oldStrategy = (assemblyMergeStrategy in assembly).value
-    oldStrategy(x)
-}
+/** Tests dependencies */
+libraryDependencies += "org.scalatest"  %% "scalatest" % "3.2.0"       % Test
+libraryDependencies += "com.h2database" % "h2"         % "1.4.200"     % Test
+libraryDependencies += "org.tpolecat"   %% "doobie-h2" % doobieVersion % Test

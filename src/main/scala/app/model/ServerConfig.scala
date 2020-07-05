@@ -11,9 +11,9 @@ final case class ServerConfig(
 )
 
 final case class DatabaseConfig(
-    host: String,
-    port: Int,
-    name: String,
+    driver: String,
+    url: String,
+    database: String,
     user: String,
     password: String,
     migrations: String
