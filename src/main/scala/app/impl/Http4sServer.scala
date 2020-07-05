@@ -5,19 +5,20 @@ import app.api.controllers._
 import app.api.services.AuthService
 import app.api.services.db.DatabaseService
 import app.model.ServerConfig
+import cats.data.Kleisli
 
 import scala.concurrent.ExecutionContext
 import cats.syntax.semigroupk._
 import cats.effect.{ContextShift, ExitCode, IO, Resource, Timer}
+import com.typesafe.scalalogging.LazyLogging
 import sttp.tapir.server.http4s._
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.syntax.all._
-import org.http4s.HttpRoutes
+import org.http4s.{HttpRoutes, Request, Response}
 import org.http4s.server.{Router, Server}
 import sttp.tapir.swagger.http4s.SwaggerHttp4s
 
-class Http4sServer(config: ServerConfig, db: DatabaseService[IO])(implicit val ec: ExecutionContext)
-    extends ServerImpl {
+class Http4sServer(config: ServerConfig, db: DatabaseService[IO])(implicit val ec: ExecutionContext) {
 
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
   implicit val timer: Timer[IO]               = IO.timer(ec)
@@ -51,15 +52,13 @@ class Http4sServer(config: ServerConfig, db: DatabaseService[IO])(implicit val e
   val concat
       : HttpRoutes[IO] = health <+> send <+> sync <+> auth <+> authTest <+> conversations <+> addToConversation <+> openApiRoute
 
-  val routes = Router("/" -> concat).orNotFound
+  val routes: Kleisli[IO, Request[IO], Response[IO]] = Router("/" -> concat).orNotFound
 
-  override val server: Resource[IO, Server[IO]] = BlazeServerBuilder[IO](ec)
+  val server: Resource[IO, Server[IO]] = BlazeServerBuilder[IO](ec)
     .bindHttp(config.port, config.host)
     .withHttpApp(routes)
     .resource
 
-  logger.info(s"Started Http4s server on ${config.host}:${config.port}")
-
   /** In Http4s Server there is no need in stop method since server is IO[ExitCode] and IOApp knows how to close it */
-  override def stop(): Unit = ()
+  def stop(): Unit = ()
 }

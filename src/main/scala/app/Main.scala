@@ -1,35 +1,31 @@
 package app
 
-import app.api.services.db.{DatabaseService, TransactorDatabaseService}
+import app.api.services.db.TransactorDatabaseService
 import app.impl.Http4sServer
 import app.init.DatabaseSession
 import app.model.ServerConfig
 import cats.effect.ExitCase.Canceled
-import cats.effect.{Blocker, ExitCase, ExitCode, IO, IOApp, Resource}
+import cats.effect.{Blocker, ContextShift, ExitCode, IO, IOApp, Resource}
 import com.typesafe.scalalogging.LazyLogging
+import org.http4s.server.Server
 import pureconfig.ConfigSource
 import pureconfig.generic.auto._
 import pureconfig.module.catseffect.syntax._
 
 import scala.concurrent.ExecutionContext
 
-object Messenger extends IOApp with LazyLogging {
+object Main extends IOApp with LazyLogging {
 
   implicit private val ec: ExecutionContext = ExecutionContext.global
+  implicit private val cs: ContextShift[IO] = IO.contextShift(ec)
 
-  override def run(args: List[String]): IO[ExitCode] = app.allocated.map(_._1).guaranteeCase {
-    case Canceled =>
-      IO {
-        logger.info("Server was stopped by cancelling")
-      }
+  override def run(args: List[String]): IO[ExitCode] =
+    appResources.use(_ => IO.never).as(ExitCode.Success).guaranteeCase {
+      case Canceled => IO(logger.info("Server successfully stopped"))
+      case r        => IO(logger.error(s"Server stopped by unknown error: $r"))
+    }
 
-    case r =>
-      IO {
-        logger.error(s"Server was stopped by unknown reason: $r")
-      }
-  }
-
-  private def app =
+  private def appResources: Resource[IO, Server[IO]] =
     for {
 
       blocker <- Blocker[IO]
@@ -45,7 +41,8 @@ object Messenger extends IOApp with LazyLogging {
 
       dbService = new TransactorDatabaseService[IO](dbSession.transactor)
 
-      _ <- new Http4sServer(config, dbService).server
+      s <- new Http4sServer(config, dbService).server
 
-    } yield ExitCode.Success
+      _ <- Resource.liftF(IO(logger.info(s"Server started on ${config.host}:${config.port}")))
+    } yield s
 }
