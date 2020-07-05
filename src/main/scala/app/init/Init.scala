@@ -21,7 +21,7 @@ object Init extends LazyLogging {
   }
 
   logger.info("PostgreSQL session is starting...")
-  val postgres = new PostgresSession(config.db)
+  val postgres = new DatabaseSession(config.db)
 
   def stop() =
     postgres.cancelInit()

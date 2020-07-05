@@ -7,12 +7,12 @@ import app.model.ServerConfig
 
 import scala.concurrent.ExecutionContext
 import cats.syntax.semigroupk._
-import cats.effect.{ContextShift, ExitCode, IO, Timer}
+import cats.effect.{ContextShift, ExitCode, IO, Resource, Timer}
 import sttp.tapir.server.http4s._
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.syntax.all._
 import org.http4s.HttpRoutes
-import org.http4s.server.Router
+import org.http4s.server.{Router, Server}
 import sttp.tapir.swagger.http4s.SwaggerHttp4s
 
 class Http4sServer(implicit val ec: ExecutionContext) extends ServerImpl {
