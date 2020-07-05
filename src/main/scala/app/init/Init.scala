@@ -1,6 +1,7 @@
 package app.init
 
 import app.model.ServerConfig
+import cats.effect.{CancelToken, IO}
 import com.typesafe.scalalogging.LazyLogging
 import pureconfig.ConfigSource
 import pureconfig.generic.auto._
@@ -21,8 +22,10 @@ object Init extends LazyLogging {
   }
 
   logger.info("PostgreSQL session is starting...")
-  val postgres = new DatabaseSession(config.db)
+
+  val postgres: DatabaseSession   = new DatabaseSession(config.db)
+  val migrations: CancelToken[IO] = postgres.runMigrations.unsafeRunCancelable(_ => IO())
 
   def stop() =
-    postgres.cancelInit()
+    migrations.unsafeRunSync
 }

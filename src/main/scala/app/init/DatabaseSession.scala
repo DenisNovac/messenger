@@ -61,12 +61,7 @@ class DatabaseSession(config: DatabaseConfig)(implicit val ec: ExecutionContext)
       IO.unit
   }
 
-  private val cancelableInit: CancelToken[IO] =
-    withRetry(3, 20, migrate).unsafeRunCancelable(_ => IO())
+  def runMigrations: IO[Unit] =
+    withRetry(3, 20, migrate)
 
-  /** Method to cancel initialization which was not completed yet */
-  def cancelInit(): Unit = {
-    logger.info("Aborting database initialization")
-    cancelableInit.unsafeRunSync()
-  }
 }
